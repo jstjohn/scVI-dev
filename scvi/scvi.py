@@ -4,6 +4,7 @@ import collections
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 
 from scvi.log_likelihood import log_zinb_positive, log_nb_positive
@@ -27,7 +28,7 @@ class VAE(nn.Module):
         self.kl_scale = kl_scale
         self.reconstruction_loss = reconstruction_loss
         if self.dispersion == "gene":
-            self.register_buffer('px_r', Variable(torch.randn(self.n_input, )))
+            self.register_buffer('px_r', nn.Parameter(torch.randn(self.n_input, )))
 
         self.encoder = Encoder(n_input, n_hidden=n_hidden, n_latent=n_latent, n_layers=n_layers,
                                dropout_rate=dropout_rate)
@@ -169,6 +170,11 @@ class Decoder(nn.Module):
         self.n_input = n_input
         self.n_layers = n_layers
 
+        # Equivalent of "multinomial dictionary" in mixture model
+        # n_latent = K = number of topics
+        # Theta follows Dirichlet = softmax(z) - ou logisticNormal(z)  [z is h in the paper]
+        self.BETA = nn.Parameter(torch.Tensor(self.n_input, self.n_latent)) # Matrix Beta equivalent
+
         # There is always a first layer
         self.decoder_first_layer = nn.Sequential(
             nn.Linear(n_latent, n_hidden),
@@ -185,8 +191,8 @@ class Decoder(nn.Module):
 
         self.x_decoder = nn.Sequential(self.decoder_first_layer, self.decoder_hidden_layers)
 
-        # mean gamma
-        self.px_scale_decoder = nn.Sequential(nn.Linear(self.n_hidden, self.n_input), nn.Softmax(dim=-1))
+        # mean gamma - this is reinterpreted
+        # self.px_scale_decoder = nn.Sequential(nn.Linear(self.n_hidden, self.n_input), nn.Softmax(dim=-1))
 
         # dispersion: here we only deal with gene-cell dispersion case
         self.px_r_decoder = nn.Linear(self.n_hidden, self.n_input)
@@ -196,8 +202,14 @@ class Decoder(nn.Module):
 
     def forward(self, dispersion, z, library):
         # The decoder returns values for the parameters of the ZINB distribution
+
+        theta = F.softmax(z, dim=-1)
+        px_scale = F.linear(theta, nn.Softmax(dim=0)(self.BETA), bias=None)
+
+        # theta represents already the soft assignment ### Is nn.Softmax(dim=1)(z) cleaner ?
+        # Maybe there should be 2 latent variables, one for the dropout modeling
         px = self.x_decoder(z)
-        px_scale = self.px_scale_decoder(px)
+        #px_scale = self.px_scale_decoder(px)
         px_dropout = self.px_dropout_decoder(px)
         px_rate = torch.exp(library) * px_scale
         if dispersion == "gene-cell":
