@@ -9,11 +9,14 @@ from torch.autograd import Variable
 
 from scvi.log_likelihood import log_zinb_positive, log_nb_positive
 
+torch.backends.cudnn.benchmark = True
+
 
 # VAE model
 class VAE(nn.Module):
     def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1,
-                 dropout_rate=0.1, dispersion="gene", log_variational=True, kl_scale=1, reconstruction_loss="zinb"):
+                 dropout_rate=0.1, dispersion="gene", log_variational=True, kl_scale=1, reconstruction_loss="zinb",
+                 batch=False, n_batch=0, using_cuda=True):
         super(VAE, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -27,21 +30,45 @@ class VAE(nn.Module):
         self.log_variational = log_variational
         self.kl_scale = kl_scale
         self.reconstruction_loss = reconstruction_loss
+        self.n_batch = n_batch
+        self.using_cuda = using_cuda and torch.cuda.is_available()
+        # boolean indicating whether we want to take the batch indexes into account
+        self.batch = batch
+
         if self.dispersion == "gene":
             self.register_buffer('px_r', nn.Parameter(torch.randn(self.n_input, )))
 
         self.encoder = Encoder(n_input, n_hidden=n_hidden, n_latent=n_latent, n_layers=n_layers,
-                               dropout_rate=dropout_rate)
+                               dropout_rate=dropout_rate, using_cuda=self.using_cuda)
         self.decoder = Decoder(n_input, n_hidden=n_hidden, n_latent=n_latent, n_layers=n_layers,
-                               dropout_rate=dropout_rate)
+                               dropout_rate=dropout_rate, batch=batch, n_batch=n_batch, using_cuda=self.using_cuda)
+
+    def sample_from_posterior(self, x):
+        # Here we compute as little as possible to have q(z|x)
+        qz = self.encoder.z_encoder(x)
+        qz_m = self.encoder.z_mean_encoder(qz)
+        qz_v = torch.exp(self.encoder.z_var_encoder(qz))
+        return self.reparameterize(qz_m, qz_v)
+
+    def get_sample_rate(self, x, batch_index=None):
+        z = self.sample_from_posterior(x)
+        theta = F.softmax(z, dim=-1)
+        # TODO: maybe just changing self.px_scale_decoder ?
+        # The dropout is still batch dependent px_dropout but no longer the scale !! Since
+        px_scale = F.linear(theta, nn.Softmax(dim=0)(self.decoder.BETA), bias=None)
+        return px_scale
 
     def reparameterize(self, mu, var):
         std = torch.sqrt(var)
         eps = Variable(std.data.new(std.size()).normal_())
         return eps.mul(std).add_(mu)
 
-    def forward(self, x):
+    def forward(self, x, batch_index=None):
         # Parameters for z latent distribution
+        if self.batch and batch_index is None:
+            raise ("This VAE was trained to take batches into account:"
+                   "please provide batch indexes when running the forward pass")
+
         if self.log_variational:
             x = torch.log(1 + x)
 
@@ -50,18 +77,21 @@ class VAE(nn.Module):
         # Sampling
         self.z = self.reparameterize(qz_m, qz_v)
         self.library = self.reparameterize(ql_m, ql_v)
+
         if self.dispersion == "gene-cell":
-            px_scale, self.px_r, px_rate, px_dropout = self.decoder.forward(self.dispersion, self.z, self.library)
+            px_scale, self.px_r, px_rate, px_dropout = self.decoder.forward(self.dispersion,
+                                                                            self.z, self.library, batch_index)
         elif self.dispersion == "gene":
-            px_scale, px_rate, px_dropout = self.decoder.forward(self.dispersion, self.z, self.library)
+            px_scale, px_rate, px_dropout = self.decoder.forward(self.dispersion,
+                                                                 self.z, self.library, batch_index)
 
         return px_scale, self.px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v
 
     def sample(self, z):
         return self.px_scale_decoder(z)
 
-    def loss(self, sampled_batch, local_l_mean, local_l_var, kl_ponderation):
-        px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = self(sampled_batch)
+    def loss(self, sampled_batch, local_l_mean, local_l_var, kl_ponderation, batch_index=None):
+        px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = self(sampled_batch, batch_index)
 
         # Reconstruction Loss
         if self.reconstruction_loss == 'zinb':
@@ -81,26 +111,10 @@ class VAE(nn.Module):
         train_loss = torch.mean(reconst_loss + kl_ponderation * kl_divergence)
         return train_loss, reconst_loss, kl_divergence
 
-    def compute_log_likelihood(self, data_loader):
-        # Iterate once over the data_loader and computes the total log_likelihood
-        log_lkl = 0
-        for i_batch, (sample_batched, local_l_mean, local_l_var, batch_index) in enumerate(data_loader):
-            sample_batched = Variable(sample_batched)
-            if torch.cuda.is_available():
-                sample_batched = sample_batched.cuda()
-
-            px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = self(sample_batched)
-            if self.reconstruction_loss == 'zinb':
-                sample_loss = -log_zinb_positive(sample_batched, px_rate, torch.exp(px_r), px_dropout)
-            elif self.reconstruction_loss == 'nb':
-                sample_loss = -log_nb_positive(sample_batched, px_rate, torch.exp(px_r))
-            log_lkl += torch.sum(sample_loss).data[0]
-        return log_lkl / len(data_loader.dataset)
-
 
 # Encoder
 class Encoder(nn.Module):
-    def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1):
+    def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1, using_cuda=True):
         super(Encoder, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -108,7 +122,7 @@ class Encoder(nn.Module):
         self.n_hidden = n_hidden
         self.n_input = n_input
         self.n_layers = n_layers
-
+        self.using_cuda = using_cuda and torch.cuda.is_available()
         # Encoding q(z/x)
         # There is always a first layer
         self.first_layer = nn.Sequential(
@@ -142,9 +156,6 @@ class Encoder(nn.Module):
         self.l_mean_encoder = nn.Linear(n_hidden, 1)
         self.l_var_encoder = nn.Linear(n_hidden, 1)
 
-        if torch.cuda.is_available():
-            self.cuda()
-
     def forward(self, x):
         # Parameters for z latent distribution
         qz = self.z_encoder(x)
@@ -161,7 +172,8 @@ class Encoder(nn.Module):
 
 # Decoder
 class Decoder(nn.Module):
-    def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1):
+    def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1, batch=False, n_batch=0,
+                 using_cuda=True):
         super(Decoder, self).__init__()
 
         self.dropout_rate = dropout_rate
@@ -169,15 +181,25 @@ class Decoder(nn.Module):
         self.n_hidden = n_hidden
         self.n_input = n_input
         self.n_layers = n_layers
+        self.n_batch = n_batch
+        self.batch = batch
+        self.using_cuda = using_cuda and torch.cuda.is_available()
+
+        if batch:
+            self.n_hidden_real = n_hidden + n_batch
+            self.n_latent_real = n_latent + n_batch
+        else:
+            self.n_hidden_real = n_hidden
+            self.n_latent_real = n_latent
 
         # Equivalent of "multinomial dictionary" in mixture model
         # n_latent = K = number of topics
         # Theta follows Dirichlet = softmax(z) - ou logisticNormal(z)  [z is h in the paper]
-        self.BETA = nn.Parameter(torch.Tensor(self.n_input, self.n_latent)) # Matrix Beta equivalent
+        self.BETA = nn.Parameter(torch.Tensor(self.n_input, self.n_latent))  # Matrix Beta equivalent
 
         # There is always a first layer
         self.decoder_first_layer = nn.Sequential(
-            nn.Linear(n_latent, n_hidden),
+            nn.Linear(self.n_latent_real, n_hidden),
             nn.BatchNorm1d(n_hidden, eps=1e-3, momentum=0.99),
             nn.ReLU())
 
@@ -185,31 +207,30 @@ class Decoder(nn.Module):
         self.decoder_hidden_layers = nn.Sequential(
             collections.OrderedDict([('Layer {}'.format(i), nn.Sequential(
                 nn.Dropout(p=self.dropout_rate),
-                nn.Linear(n_hidden, n_hidden),
+                nn.Linear(self.n_hidden, n_hidden),
                 nn.BatchNorm1d(n_hidden, eps=1e-3, momentum=0.99),
                 nn.ReLU())) for i in range(1, n_layers)]))
 
-        self.x_decoder = nn.Sequential(self.decoder_first_layer, self.decoder_hidden_layers)
+        self.px_decoder = nn.Sequential(self.decoder_first_layer, self.decoder_hidden_layers)
 
-        # mean gamma - this is reinterpreted
+        # mean gamma - this is reinterpreted - we just don't need it anymore
         # self.px_scale_decoder = nn.Sequential(nn.Linear(self.n_hidden, self.n_input), nn.Softmax(dim=-1))
 
         # dispersion: here we only deal with gene-cell dispersion case
-        self.px_r_decoder = nn.Linear(self.n_hidden, self.n_input)
+        self.px_r_decoder = nn.Linear(self.n_hidden_real, self.n_input)
 
         # dropout
-        self.px_dropout_decoder = nn.Linear(self.n_hidden, self.n_input)
+        self.px_dropout_decoder = nn.Linear(self.n_hidden_real, self.n_input)
 
-    def forward(self, dispersion, z, library):
+    def forward(self, dispersion, z, library, batch_index=None):
         # The decoder returns values for the parameters of the ZINB distribution
-
         theta = F.softmax(z, dim=-1)
         px_scale = F.linear(theta, nn.Softmax(dim=0)(self.BETA), bias=None)
 
         # theta represents already the soft assignment ### Is nn.Softmax(dim=1)(z) cleaner ?
         # Maybe there should be 2 latent variables, one for the dropout modeling
-        px = self.x_decoder(z)
-        #px_scale = self.px_scale_decoder(px)
+        px = self.px_decoder_batch(z, batch_index)
+        # px_scale = self.px_scale_decoder(px)
         px_dropout = self.px_dropout_decoder(px)
         px_rate = torch.exp(library) * px_scale
         if dispersion == "gene-cell":
@@ -217,3 +238,20 @@ class Decoder(nn.Module):
             return px_scale, px_r, px_rate, px_dropout
         elif dispersion == "gene":
             return px_scale, px_rate, px_dropout
+
+    def px_decoder_batch(self, z, batch_index):
+
+        def one_hot(batch_index, n_batch, dtype):
+            if self.using_cuda:
+                batch_index = batch_index.cuda()
+            onehot = batch_index.new(batch_index.size(0), n_batch).fill_(0)
+            onehot.scatter_(1, batch_index, 1)
+            return Variable(onehot.type(dtype))
+
+        if self.batch:
+            one_hot_batch = one_hot(batch_index, self.n_batch, z.data.type())
+            z = torch.cat((z, one_hot_batch), 1)
+        px = self.px_decoder(z)
+        if self.batch:
+            px = torch.cat((px, one_hot_batch), 1)
+        return px
