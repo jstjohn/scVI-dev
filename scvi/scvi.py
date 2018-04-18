@@ -50,11 +50,15 @@ class VAE(nn.Module):
         qz_v = torch.exp(self.encoder.z_var_encoder(qz))
         return self.reparameterize(qz_m, qz_v)
 
-    def get_sample_rate(self, x, batch_index=None):
+    def get_theta(self, x):
         z = self.sample_from_posterior(x)
         theta = F.softmax(z, dim=-1)
+        return theta
+
+    def get_sample_rate(self, x, batch_index=None):
+        theta = self.get_theta(x)
         # TODO: maybe just changing self.px_scale_decoder ?
-        # The dropout is still batch dependent px_dropout but no longer the scale !! Since
+        # Important : in this model the dropout is still batch dependent but no longer the px_scale.
         px_scale = F.linear(theta, nn.Softmax(dim=0)(self.decoder.BETA), bias=None)
         return px_scale
 

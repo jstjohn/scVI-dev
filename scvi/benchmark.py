@@ -1,8 +1,8 @@
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
-import numpy as np
 
-from scvi.clustering import entropy_batch_mixing
+from scvi.clustering import entropy_batch_mixing, histogram_of_clusters
 from scvi.dataset import CortexDataset
 from scvi.differential_expression import get_statistics
 from scvi.imputation import imputation
@@ -21,7 +21,6 @@ def run_benchmarks(gene_dataset_train, gene_dataset_test, n_epochs=1000, learnin
     # - imputation
     # - batch mixing
     # - cluster scores
-
     data_loader_train = DataLoader(gene_dataset_train, batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
     data_loader_test = DataLoader(gene_dataset_test, batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
     vae = VAE(gene_dataset_train.nb_genes, batch=use_batches, n_batch=gene_dataset_train.n_batches,
@@ -38,7 +37,6 @@ def run_benchmarks(gene_dataset_train, gene_dataset_test, n_epochs=1000, learnin
     print("Log-likelihood Test:", log_likelihood_test)
 
     # - imputation
-
     imputation_train = imputation(vae, data_loader_train)
     print("Imputation score on train (MAE) is:", imputation_train)
 
@@ -64,3 +62,4 @@ def run_benchmarks(gene_dataset_train, gene_dataset_test, n_epochs=1000, learnin
     #
     if type(gene_dataset_train) == CortexDataset:
         get_statistics(vae, data_loader_train, M_sampling=1, M_permutation=1)  # 200 - 100000
+        histogram_of_clusters(vae, data_loader_train, filename="clustering_10.png")
