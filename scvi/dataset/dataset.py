@@ -21,7 +21,6 @@ class GeneExpressionDataset(Dataset):
         # or transposed CSC sparse matrix (the argument sparse must then be set to true)
         self.nb_genes = Xs[0].shape[1]
         self.n_batches = len(Xs)
-
         assert all(X.shape[1] == self.nb_genes for X in Xs), "All tensors must have same size"
 
         new_Xs = []

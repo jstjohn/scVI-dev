@@ -4,6 +4,7 @@ from .brain_large import BrainLargeDataset
 from .cortex import CortexDataset
 from .dataset import GeneExpressionDataset
 from .synthetic import SyntheticDataset
+from .retina import RetinaDatasetTest, RetinaDatasetTrain
 
 __all__ = ['SyntheticDataset',
            'CortexDataset',
@@ -19,6 +20,8 @@ def load_datasets(dataset_name):
     elif dataset_name == 'brain_large':
         gene_dataset = BrainLargeDataset()
         gene_dataset_train, gene_dataset_test = gene_dataset, gene_dataset  # Return same object for now
+    elif dataset_name == 'retina':
+        gene_dataset_train, gene_dataset_test = RetinaDatasetTrain(), RetinaDatasetTest()
     elif dataset_name.endswith('.npy'):
         data = np.load(dataset_name)
         train_data, test_data = GeneExpressionDataset.train_test_split(data)

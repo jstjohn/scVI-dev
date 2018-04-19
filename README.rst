@@ -6,18 +6,18 @@ scVI
     :target: https://travis-ci.org/YosefLab/scVI-dev
 
 .. image:: https://codecov.io/gh/YosefLab/scVI-dev/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/YosefLab/scVI-dev
+    :target: https://codecov.io/gh/YosefLab/scVI-dev
 
 .. image:: https://readthedocs.org/projects/scvi/badge/?version=latest
-        :target: https://scvi.readthedocs.io/en/latest/?badge=latest
+    :target: https://scvi.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
 
-Single-cell Variational Inference
+    Single-cell Variational Inference
 
 
-* Free software: MIT license
-* Documentation: https://scvi.readthedocs.io.
+    * Free software: MIT license
+    * Documentation: https://scvi.readthedocs.io.
 
 
 Installation
@@ -27,7 +27,7 @@ Installation
 
 2. Install this repository from source: ``git clone https://github.com/YosefLab/scVI-dev.git``
 
-3. Refer to the `examples/` subdirectory for Jupyter notebooks that illustrate usage. 
+3. Refer to the `examples/` subdirectory for Jupyter notebooks that illustrate usage.
 
 
 Benchmarks
@@ -37,7 +37,7 @@ To recreate the results appearing in the paper referenced below, run
 
 .. code-block::
 
-    python ./run_benchmarks.py --dataset=cortex 
+    python ./run_benchmarks.py --dataset=cortex
 
 References
 --------
