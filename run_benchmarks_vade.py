@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     data_loader_train = DataLoader(gene_dataset_train, batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
     data_loader_test = DataLoader(gene_dataset_test, batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
-    vae = VAE(gene_dataset_train.nb_genes, n_clusters=15, batch=False, n_batch=gene_dataset_train.n_batches,
+    vae = VAE(gene_dataset_train.nb_genes, n_clusters=15, batch=True, n_batch=gene_dataset_train.n_batches,
               using_cuda=True)
     if vae.using_cuda:
         vae.cuda()
