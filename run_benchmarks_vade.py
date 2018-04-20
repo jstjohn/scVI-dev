@@ -27,7 +27,7 @@ if __name__ == '__main__':
     if vae.using_cuda:
         vae.cuda()
 
-    train(vae, data_loader_train, data_loader_test, n_epochs=120, learning_rate=1e-3, vade=False)
+    train(vae, data_loader_train, data_loader_test, n_epochs=1, learning_rate=1e-3, vade=False)
 
     # visualizing the latent space at the end of pretraining
     data_loader_visualize = DataLoader(gene_dataset_test, batch_size=gene_dataset_test.total_size, shuffle=True,
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         show_t_sne(z.data.cpu().numpy(), labels=c_labels.cpu().numpy().flatten(), title="After pretraining")
 
     vae.initialize_gmm(data_loader_train)
-    train(vae, data_loader_train, data_loader_test, n_epochs=30, learning_rate=1e-4, vade=True)
+    train(vae, data_loader_train, data_loader_test, n_epochs=1, learning_rate=1e-4, vade=True)
 
     # visualizing the latent space of the vade
     for i_batch, (sample_batch, _, _, batch_index, c_labels) in enumerate(data_loader_visualize):

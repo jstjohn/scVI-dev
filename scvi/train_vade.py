@@ -38,7 +38,11 @@ def train(vae, data_loader_train, data_loader_test, n_epochs=20, learning_rate=0
                 real_loss = reconst_loss + kl_divergence
 
             if vade is True:
-                train_loss = vae.loss_vade(sample_batch, local_l_mean, local_l_var, kl_ponderation)
+                if vae.batch:
+                    train_loss = vae.loss_vade(sample_batch, local_l_mean, local_l_var, kl_ponderation, batch_index)
+                else:
+                    train_loss = vae.loss_vade(sample_batch, local_l_mean, local_l_var, kl_ponderation)
+
             optimizer.zero_grad()
             train_loss.backward()
             optimizer.step()
