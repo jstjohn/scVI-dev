@@ -30,29 +30,34 @@ if __name__ == '__main__':
     train(vae, data_loader_train, data_loader_test, n_epochs=1, learning_rate=1e-3, vade=False)
 
     # visualizing the latent space at the end of pretraining
-    data_loader_visualize = DataLoader(gene_dataset_test, batch_size=gene_dataset_test.total_size, shuffle=True,
+    # data_loader_visualize = DataLoader(gene_dataset_test, batch_size=gene_dataset_test.total_size, shuffle=True,
+    #                                    num_workers=1, pin_memory=True)
+    data_loader_visualize = DataLoader(gene_dataset_test, batch_size=1000, shuffle=True,
                                        num_workers=1, pin_memory=True)
     for i_batch, (sample_batch, _, _, batch_index, c_labels) in enumerate(data_loader_visualize):
-        sample_batch = Variable(sample_batch)
-        if vae.using_cuda:
-            sample_batch = sample_batch.cuda(async=True)
-            batch_index = batch_index.cuda(async=True)
-        px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = vae(sample_batch, batch_index)
-        z = vae.reparameterize(qz_m, qz_v)
-        show_t_sne(z.data.cpu().numpy(), labels=c_labels.cpu().numpy().flatten(), title="After pretraining")
+        if i_batch == 0:
+            sample_batch = Variable(sample_batch)
+            if vae.using_cuda:
+                sample_batch = sample_batch.cuda(async=True)
+                batch_index = batch_index.cuda(async=True)
+            px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = vae(sample_batch, batch_index)
+            z = vae.reparameterize(qz_m, qz_v)
+
+            show_t_sne(z.data.cpu().numpy(), labels=c_labels.cpu().numpy().flatten(), title="After pretraining")
 
     vae.initialize_gmm(data_loader_train)
     train(vae, data_loader_train, data_loader_test, n_epochs=1, learning_rate=1e-4, vade=True)
 
     # visualizing the latent space of the vade
     for i_batch, (sample_batch, _, _, batch_index, c_labels) in enumerate(data_loader_visualize):
-        sample_batch = Variable(sample_batch)
-        if vae.using_cuda:
-            sample_batch = sample_batch.cuda(async=True)
-            batch_index = batch_index.cuda(async=True)
-        px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = vae(sample_batch, batch_index)
-        z = vae.reparameterize(qz_m, qz_v)
-        show_t_sne(z.data.cpu().numpy(), labels=c_labels.cpu().numpy().flatten(), title="After VADE")
+        if i_batch == 0:
+            sample_batch = Variable(sample_batch)
+            if vae.using_cuda:
+                sample_batch = sample_batch.cuda(async=True)
+                batch_index = batch_index.cuda(async=True)
+            px_scale, px_r, px_rate, px_dropout, qz_m, qz_v, ql_m, ql_v = vae(sample_batch, batch_index)
+            z = vae.reparameterize(qz_m, qz_v)
+            show_t_sne(z.data.cpu().numpy(), labels=c_labels.cpu().numpy().flatten(), title="After VADE")
 
     end = time.time()
     print("Total runtime for " + str(args.epochs) + " epochs is: " + str((end - start))
