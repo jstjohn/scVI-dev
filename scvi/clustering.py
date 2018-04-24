@@ -1,4 +1,13 @@
 import numpy as np
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
+from sklearn.metrics import normalized_mutual_info_score as NMI
+from sklearn.metrics import adjusted_rand_score as ARI
+
+
+def cluster_scores(latent_space, n_clusters, labels_true):
+    labels_pred = KMeans(n_clusters, n_jobs=8, n_init=200).fit_predict(latent_space)
+    return [silhouette_score(latent_space, labels_true), NMI(labels_true, labels_pred), ARI(labels_true, labels_pred)]
 
 
 # CLUSTERING METRICS

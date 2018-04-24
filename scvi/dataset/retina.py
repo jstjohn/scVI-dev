@@ -12,21 +12,25 @@ class RetinaDataset(GeneExpressionDataset):
         self.labels_filename = 'retina_labels_%s.dms' % type
         self.batches_filename = 'retina_batch_%s.dms' % type
         if type == 'train':
-            cell_batches = np.reshape((np.loadtxt(self.save_path + self.batches_filename)-1), (19829, 1))
+            cell_batches = np.reshape((np.loadtxt(self.save_path + self.batches_filename) - 1), (19829, 1))
+            labels = np.reshape((np.loadtxt(self.save_path + self.labels_filename)), (19829, 1))
         if type == 'test':
-            cell_batches = np.reshape((np.loadtxt(self.save_path + self.batches_filename)-1), (6610, 1))
+            cell_batches = np.reshape((np.loadtxt(self.save_path + self.batches_filename) - 1), (6610, 1))
+            labels = np.reshape((np.loadtxt(self.save_path + self.labels_filename)), (6610, 1))
 
-        labels = np.loadtxt(self.save_path + self.labels_filename)
-        print(labels.shape)
         data = sp_sparse.load_npz(self.save_path + self.data_filename).toarray()
-        data_with_batch_info = np.hstack((data, cell_batches))
-        first_batch = data_with_batch_info[data_with_batch_info[:, -1] == 0.0]
-        labels_first_batch = labels[data_with_batch_info[:, -1] == 0.0]
-        second_batch = data_with_batch_info[data_with_batch_info[:, -1] == 1.0]
-        labels_second_batch = labels[data_with_batch_info[:, -1] == 1.0]
+        print(data.shape)
+        data_with_info = np.hstack((data, labels, cell_batches))
+        print(data_with_info.shape)
+        first_batch = data_with_info[data_with_info[:, -1] == 0.0]
+        second_batch = data_with_info[data_with_info[:, -1] == 1.0]
         first_batch = first_batch[:, :-1]
         second_batch = second_batch[:, :-1]
+        print(first_batch[:, :-1].shape)
 
         print("Finished preprocessing for Retina %s dataset" % type)
-        super(RetinaDataset, self).__init__([sp_sparse.csr_matrix(first_batch), sp_sparse.csr_matrix(second_batch)],
-                                            list_labels=[labels_first_batch, labels_second_batch])
+        # super(RetinaDataset, self).__init__([sp_sparse.csr_matrix(data)],
+        #                                     list_labels=[labels])
+        super(RetinaDataset, self).__init__([sp_sparse.csr_matrix(first_batch[:, :-1]),
+                                             sp_sparse.csr_matrix(second_batch[:, :-1])],
+                                            list_labels=[first_batch[:, -1], second_batch[:, -1]])
