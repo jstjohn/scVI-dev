@@ -33,3 +33,8 @@ def test_brain_large():
 def test_retina():
     gene_dataset = load_datasets("retina", unit_test=True)
     run_benchmarks(gene_dataset, n_epochs=1, show_batch_mixing=False)
+
+
+def test_cbmc():
+    gene_dataset = load_datasets("cbmc", unit_test=True)
+    run_benchmarks(gene_dataset, n_epochs=1, show_batch_mixing=False)
