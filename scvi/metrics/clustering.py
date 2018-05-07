@@ -15,7 +15,7 @@ def get_latent(vae, data_loader):
             tensors = to_cuda(tensors)
         sample_batch, local_l_mean, local_l_var, batch_index, labels = tensors
         sample_batch = sample_batch.type(torch.float32)
-        latent += [vae.sample_from_posterior_z(sample_batch, y=labels)]
+        latent += [vae.sample_from_posterior_z(sample_batch, y=label)]
         batch_indices += [batch_index]
         labels_indices += [labels]
     return torch.cat(latent), torch.cat(batch_indices), torch.cat(labels_indices)
