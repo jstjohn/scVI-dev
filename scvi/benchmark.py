@@ -72,12 +72,7 @@ def run_benchmarks_classification(gene_dataset, n_latent=10, n_epochs=10, n_epoc
 
     probabilities = [1 / gene_dataset.n_labels for i in range(gene_dataset.n_labels)]
     # probabilities = [0.15, 0.15, 0.15, 0.15, 0.15, 0, 0]
-    print(len(gene_dataset))
-    print(gene_dataset.labels)
-
-    print(gene_dataset.labels.size())
     example_indices = gene_dataset.get_indices(probabilities, scale=tt_split)
-    print(example_indices)
     # example_indices = np.random.permutation(len(gene_dataset))
 
     tt_split = int(tt_split * len(gene_dataset))

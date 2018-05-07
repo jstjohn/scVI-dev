@@ -73,7 +73,6 @@ class GeneExpressionDataset(Dataset):
         nbrs = [int(probability * len(self) * scale) for probability in probabilities]
         current_nbrs = np.zeros(len(probabilities))
         for idx, (label) in enumerate(self.labels):
-            print(idx)
             if current_nbrs[label.cpu().numpy()[0]] < nbrs[label.cpu().numpy()[0]]:
                 indices.insert(0, idx)
                 current_nbrs[label.cpu().numpy()[0]] += 1
