@@ -20,6 +20,7 @@ class SVAEC(nn.Module):
         self.n_input = n_input
 
         self.y_prior = y_prior if y_prior is not None else (1 / self.n_labels) * torch.ones(self.n_labels)
+        # self.y_prior = torch.nn.Parameter(torch.FloatTensor(self.y_prior))
         # Automatically desactivate if useless
         self.n_batch = 0 if n_batch == 1 else n_batch
         self.z_encoder = Encoder(n_input, n_hidden=n_hidden, n_latent=n_latent, n_layers=n_layers,

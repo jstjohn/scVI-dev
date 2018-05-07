@@ -5,14 +5,13 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from scvi.metrics.classification import compute_accuracy_svc, compute_accuracy_dt, compute_accuracy_md
-from scvi.dataset import CortexDataset
 from scvi.dataset import CortexDataset, load_datasets
 from scvi.metrics.adapt_encoder import adapt_encoder
 from scvi.metrics.clustering import entropy_batch_mixing, get_latent
 from scvi.metrics.differential_expression import get_statistics
 from scvi.metrics.imputation import imputation
 from scvi.metrics.visualization import show_t_sne
-from scvi.models import VAE, SVAEC, VAEC
+from scvi.models import VAE, SVAEC
 from scvi.models.modules import Classifier
 from scvi.train import train, train_classifier, train_semi_supervised
 
@@ -64,18 +63,16 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
 
 # Pipeline to compare different semi supervised models
 def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epochs_classifier=10, lr=1e-2,
-                                  use_batches=False, use_cuda=True, tt_split=0.9):
+                                  use_batches=False, use_cuda=True, tt_split=0.1):
     gene_dataset = load_datasets(dataset_name)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(12, 5))
 
     alpha = 100  # in Kingma, 0.1 * len(gene_dataset), but pb when : len(gene_dataset) >> 1
 
     # Create the dataset
-    example_indices = np.random.permutation(len(gene_dataset))
-    tt_split = int(tt_split * len(gene_dataset))  # 90%/10% train/test split
-
-    probabilities = [1 / gene_dataset.n_labels for i in range(gene_dataset.n_labels)]
-    # probabilities = [0.15, 0.15, 0.15, 0.15, 0.15, 0, 0]
+    # example_indices = np.random.permutation(len(gene_dataset))
+    # probabilities = [1 / gene_dataset.n_labels for i in range(gene_dataset.n_labels)]
+    probabilities = [0.2, 0.2, 0.2, 0.2, 0.1, 0.05, 0.05]
     example_indices = gene_dataset.get_indices(probabilities, scale=tt_split)
     # example_indices = np.random.permutation(len(gene_dataset))
 
@@ -135,23 +132,23 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
                                                         labels_test.cpu().numpy(),
                                                         n_labels=gene_dataset.n_labels)
 
-    axes[0].plot(np.repeat(accuracy_train, n_epochs), label='Clustering baseline')
-    axes[1].plot(np.repeat(accuracy_train, n_epochs))
+    axes[0].plot(np.repeat(accuracy_train, n_epochs), '--', label='Clustering baseline')
+    axes[1].plot(np.repeat(accuracy_train, n_epochs), '--')
 
     # ========== The VAEC model ===========
 
-    print("Trying VAEC model")
-    prior = torch.FloatTensor(
-        [(gene_dataset.labels == i).type(torch.float32).mean() for i in range(gene_dataset.n_labels)])
-
-    vaec = VAEC(gene_dataset.nb_genes, n_labels=gene_dataset.n_labels, y_prior=prior,
-                n_latent=n_latent, use_cuda=use_cuda)
-
-    stats = train_semi_supervised(vaec, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr,
-                                  classification_ratio=alpha)
-
-    axes[0].plot(stats.history["Accuracy_train"], label='VAEC')
-    axes[1].plot(stats.history["Accuracy_test"])
+    # print("Trying VAEC model")
+    # prior = torch.FloatTensor(
+    #     [(gene_dataset.labels == i).type(torch.float32).mean() for i in range(gene_dataset.n_labels)])
+    #
+    # vaec = VAEC(gene_dataset.nb_genes, n_labels=gene_dataset.n_labels, y_prior=prior,
+    #             n_latent=n_latent, use_cuda=use_cuda)
+    #
+    # stats = train_semi_supervised(vaec, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr,
+    #                               classification_ratio=alpha)
+    #
+    # axes[0].plot(stats.history["Accuracy_train"], label='VAEC')
+    # axes[1].plot(stats.history["Accuracy_test"])
 
     # ========== The M1+M2 model trained jointly ===========
     print("Trying out M1+M2 optimized jointly")
@@ -168,13 +165,13 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     axes[1].plot(stats.history["Accuracy_test"])
 
     # ========== Classifier trained on the latent space of M1+M2 ===========
-    print("Trying to classify on M1+M2's z1 latent space")
-    cls = Classifier(n_input=n_latent, n_labels=gene_dataset.n_labels, n_layers=3, use_cuda=use_cuda)
-
-    stats = train_classifier(svaec, cls, data_loader_train, data_loader_test, n_epochs=n_epochs_classifier, lr=lr)
-
-    axes[0].plot(stats.history["Accuracy_train"], label='M1+M2+classifier')
-    axes[1].plot(stats.history["Accuracy_test"])
+    # print("Trying to classify on M1+M2's z1 latent space")
+    # cls = Classifier(n_input=n_latent, n_labels=gene_dataset.n_labels, n_layers=3, use_cuda=use_cuda)
+    #
+    # stats = train_classifier(svaec, cls, data_loader_train, data_loader_test, n_epochs=n_epochs_classifier, lr=lr)
+    #
+    # axes[0].plot(stats.history["Accuracy_train"], label='M1+M2+classifier')
+    # axes[1].plot(stats.history["Accuracy_test"])
 
     # Now plot the results
     axes[0].set_ylim(0, 1)
