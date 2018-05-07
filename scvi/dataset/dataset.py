@@ -68,6 +68,34 @@ class GeneExpressionDataset(Dataset):
             self.download()
         return self.preprocess()
 
+    def get_indices(self, probabilities, scale):
+        indices = []
+        nbrs = [int(probability * len(self) * scale) for probability in probabilities]
+        current_nbrs = np.zeros(len(probabilities))
+        for idx, (label) in enumerate(self.labels):
+            print(idx)
+            if current_nbrs[label.cpu().numpy()[0]] < nbrs[label.cpu().numpy()[0]]:
+                indices.insert(0, idx)
+                current_nbrs[label.cpu().numpy()[0]] += 1
+            else:
+                indices.append(idx)
+        print(current_nbrs)
+        return np.array(indices)
+
+    def data_for_classification(self, indices):
+        # Getting the data under np format from the dataset
+        data = self.X[indices]
+        if self.dense is False:
+            data = data.toarray()
+        # log normalizing otherwise the classification won't work
+        data = np.log(1 + data)
+
+        # Getting the labels
+        labels = self.labels[indices]
+        labels = np.ravel(labels.cpu().numpy())
+
+        return data, labels
+
     @staticmethod
     def train_test_split(*Xs, train_size=0.75):
         """

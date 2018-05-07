@@ -64,7 +64,7 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
     for epoch in range(n_epochs):
         # initialize kl, reconst
         total_train_loss = 0
-        for i_batch, (tensors_train, tensors_test) in enumerate(zip(data_loader_train, cycle(data_loader_test))):
+        for i_batch, (tensors_train, tensors_test) in enumerate(zip(cycle(data_loader_train), data_loader_test)):
             with torch.no_grad():
                 if vae.use_cuda:
                     tensors_train = to_cuda(tensors_train)

@@ -9,7 +9,7 @@ from scvi.models import VAE, VAEC, SVAEC
 
 
 class Stats:
-    def __init__(self, verbose=True, record_freq=5, n_epochs=-1, benchmark=False, names=['train', 'test', 'val']):
+    def __init__(self, verbose=True, record_freq=1, n_epochs=-1, benchmark=False, names=['train', 'test', 'val']):
         self.verbose = verbose
         self.record_freq = record_freq
         self.n_epochs = n_epochs
