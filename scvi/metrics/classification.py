@@ -5,7 +5,6 @@ from sklearn.cluster import KMeans
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import GridSearchCV
-from sklearn.manifold import TSNE
 
 
 @no_grad()
@@ -78,12 +77,8 @@ def compute_accuracy_dt(data_train, data_test, labels_train, labels_test):
 def compute_accuracy_md(data_train_latent, data_test_latent, labels_train, labels_test, n_labels):
     # uses clustering and Majority Decision to predict the labels of data points in data_loader_test
 
-    # Obtain a 2D latent space via t-sne
-    # Probably what a computational biologist would do
     split_index = len(data_train_latent)
-    data = np.concatenate((data_train_latent, data_test_latent))
-    X = TSNE(n_components=2).fit_transform(data)
-
+    X = np.concatenate((data_train_latent, data_test_latent))
     # Cluster the data using k-means
     kmeans = KMeans(n_clusters=n_labels).fit(X)
     clusters_train = kmeans.predict(X[:split_index])

@@ -121,7 +121,8 @@ class SVAEC(nn.Module):
         kl_divergence_l = kl(Normal(ql_m, torch.sqrt(ql_v)), Normal(local_l_mean, torch.sqrt(local_l_var))).sum(dim=1)
         kl_divergence = kl_divergence_z2
 
-
+        # We add the kl_divergence_l and the loss_z1 to the reconst loss
+        # so that it isn't affected by the warmup scheme
         if is_labelled:
             return reconst_loss + loss_z1 + kl_divergence_l, kl_divergence
         reconst_loss += loss_z1 + kl_divergence_l

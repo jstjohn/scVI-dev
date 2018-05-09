@@ -20,22 +20,6 @@ def compute_log_likelihood(vae, data_loader):
         log_lkl += torch.sum(reconst_loss).item()
     return log_lkl / len(data_loader.sampler.indices)
 
-@no_grad()
-@eval_modules()
-def compute_kl(vae, data_loader):
-    # Iterate once over the data_loader and computes the total log_likelihood
-    kl = 0
-    for i_batch, tensors in enumerate(data_loader):
-        if vae.use_cuda:
-            tensors = to_cuda(tensors)
-        sample_batch, local_l_mean, local_l_var, batch_index, labels = tensors
-        sample_batch = sample_batch.type(torch.float32)
-        reconst_loss, kl_divergence = vae(sample_batch, local_l_mean, local_l_var, batch_index=batch_index,
-                                          y=labels)
-        kl += torch.sum(kl_divergence).item()
-    return kl / len(data_loader.sampler.indices)
-
-
 
 def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
     """

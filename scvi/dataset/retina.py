@@ -17,7 +17,7 @@ class RetinaDataset(GeneExpressionDataset):
         if unit_test:
             cell_batches = np.reshape((np.load(self.save_path + self.batches_filename)), (5, 1))
             cell_batches[0] = 1
-            labels = np.reshape((np.load(self.save_path + self.labels_filename)), (5, 1))
+            # labels = np.reshape((np.load(self.save_path + self.labels_filename)), (5, 1))
             data = np.load(self.save_path + self.data_filename)['data']
             data = np.reshape(data, (5, 13166))
             data = data.repeat(100, 0)
