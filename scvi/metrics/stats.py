@@ -48,11 +48,11 @@ class Stats:
         if type(model) in models or classifier:
             accuracy_classes, classes_probabilities = compute_accuracy_classes(model, data_loader, classifier)
             # accuracy = compute_accuracy(model, data_loader, classifier)
-            accuracy = compute_weighted_accuracy(accuracy_classes, classes_probabilities)
-            unweighted_accuracy = compute_unweighted_accuracy(accuracy_classes, classes_probabilities)
+            accuracy = compute_unweighted_accuracy(accuracy_classes, classes_probabilities)
+            weighted_accuracy = compute_weighted_accuracy(accuracy_classes, classes_probabilities)
             worst_accuracy = compute_worst_accuracy(accuracy_classes)
             self.history["Accuracy_%s" % name].append(accuracy)
-            self.history["Unweighted_accuracy_%s" % name].append(unweighted_accuracy)
+            self.history["Weighted_accuracy_%s" % name].append(weighted_accuracy)
             self.history["Worst_accuracy_%s" % name].append(worst_accuracy)
             if self.verbose:
                 print("Accuracy %s is: %4f" % (name, accuracy))

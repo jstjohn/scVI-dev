@@ -139,8 +139,8 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     axes[0].plot(cls_stats.history["Accuracy_train"], label='VAE + classifier')
     axes[1].plot(cls_stats.history["Accuracy_test"])
 
-    axes[0].plot(cls_stats.history["Unweighted_accuracy_train"], label='VAE + classifier (Unweighted')
-    axes[1].plot(cls_stats.history["Unweighted_accuracy_test"])
+    axes[0].plot(cls_stats.history["Weighted_accuracy_train"], label='VAE + classifier (weighted')
+    axes[1].plot(cls_stats.history["Weighted_accuracy_test"])
 
     axes[0].plot(cls_stats.history["Worst_accuracy_train"], label='VAE + classifier (Worst)')
     axes[1].plot(cls_stats.history["Worst_accuracy_test"])

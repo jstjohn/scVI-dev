@@ -10,7 +10,7 @@ class RetinaDataset(GeneExpressionDataset):
         if unit_test:
             self.save_path = 'tests/data/'
         else:
-            self.save_path = 'scvi/data/'
+            self.save_path = 'data/'
         self.data_filename = 'retina_counts.npz'
         self.labels_filename = 'retina_labels.npy'
         self.batches_filename = 'retina_batch.npy'
@@ -24,14 +24,22 @@ class RetinaDataset(GeneExpressionDataset):
             cell_batches = cell_batches.repeat(100, 0)
             labels = np.arange(5).reshape(5, 1).repeat(100, 0)  # np.arange(1,5)#labels.repeat(100, 0)
         else:
+            print(self.save_path + self.data_filename)
+            print(sp_sparse.load_npz(self.save_path + self.data_filename).toarray().shape)
             cell_batches = np.reshape((np.load(self.save_path + self.batches_filename)), (19829, 1))
             labels = np.reshape((np.load(self.save_path + self.labels_filename)), (19829, 1))
             data = sp_sparse.load_npz(self.save_path + self.data_filename).toarray()
+
         data_with_info = np.hstack((data, labels, cell_batches))
         first_batch = data_with_info[data_with_info[:, -1] == 0.0]
         second_batch = data_with_info[data_with_info[:, -1] == 1.0]
         first_batch = first_batch[:, :-1]
         second_batch = second_batch[:, :-1]
+        print("First batche's shape ")
+        print(first_batch.shape)
+        print("Second batche's shape ")
+        print(second_batch.shape)
+        print(first_batch[1:15, :])
         print("Finished preprocessing for Retina %s dataset" % type)
         super(RetinaDataset, self).__init__(*GeneExpressionDataset.get_attributes_from_list(
             [sp_sparse.csr_matrix(first_batch[:, :-1]), sp_sparse.csr_matrix(second_batch[:, :-1])],
