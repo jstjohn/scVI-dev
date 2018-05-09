@@ -4,7 +4,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from scvi.metrics.classification import compute_accuracy_svc, compute_accuracy_dt, compute_accuracy_md
+from scvi.metrics.classification import compute_accuracy_svc, compute_accuracy_rf,\
+    compute_accuracy_md, compute_accuracy_classes
 from sklearn.decomposition import PCA
 from scvi.dataset import CortexDataset, load_datasets
 from scvi.metrics.adapt_encoder import adapt_encoder
@@ -115,9 +116,9 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     axes[0].plot(np.repeat(accuracy_train_svc, n_epochs), label='SVC')
     axes[1].plot(np.repeat(accuracy_test_svc, n_epochs))
 
-    accuracy_train_dt, accuracy_test_dt = compute_accuracy_dt(data_train, data_test, labels_train, labels_test)
+    accuracy_train_dt, accuracy_test_dt = compute_accuracy_rf(data_train, data_test, labels_train, labels_test)
     print(accuracy_test_dt)
-    axes[0].plot(np.repeat(accuracy_train_dt, n_epochs), label='Decision Tree')
+    axes[0].plot(np.repeat(accuracy_train_dt, n_epochs), label='RF')
     axes[1].plot(np.repeat(accuracy_test_dt, n_epochs))
 
     # Now we try out the different models and compare their accuracy
@@ -127,16 +128,22 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     vae = VAE(gene_dataset.nb_genes, n_latent=n_latent,
               n_batch=gene_dataset.n_batches * use_batches, use_cuda=use_cuda,
               n_labels=gene_dataset.n_labels)
-    train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr)
-
+    train(vae, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr)
     # Then we train a classifier on the latent space
     cls = Classifier(n_input=n_latent, n_labels=gene_dataset.n_labels, n_layers=3, use_cuda=use_cuda)
     for param in vae.z_encoder.parameters():
         param.requires_grad = False
     cls_stats = train_classifier(vae, cls, data_loader_train, data_loader_test, n_epochs=n_epochs_classifier, lr=lr)
+    print(compute_accuracy_classes(vae, data_loader_train, cls))
 
     axes[0].plot(cls_stats.history["Accuracy_train"], label='VAE + classifier')
     axes[1].plot(cls_stats.history["Accuracy_test"])
+
+    axes[0].plot(cls_stats.history["Unweighted_accuracy_train"], label='VAE + classifier (Unweighted')
+    axes[1].plot(cls_stats.history["Unweighted_accuracy_test"])
+
+    axes[0].plot(cls_stats.history["Worst_accuracy_train"], label='VAE + classifier (Worst)')
+    axes[1].plot(cls_stats.history["Worst_accuracy_test"])
 
     # ========== Majority decision ========
 
