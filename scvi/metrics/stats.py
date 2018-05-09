@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 from scvi.metrics.classification import compute_accuracy
-from scvi.metrics.log_likelihood import compute_log_likelihood
+from scvi.metrics.log_likelihood import compute_log_likelihood, compute_kl
 from scvi.models import VAE, VAEC, SVAEC
 
 
@@ -30,9 +30,18 @@ class Stats:
                 print("EPOCH [%d/%d]: " % (self.epoch, self.n_epochs))
             for data_loader, name in zip(data_loaders, self.names):
                 self.add_ll(model, data_loader, name=name)
+                # self.add_kl(model, data_loader, name=name)
                 self.add_accuracy(model, data_loader, classifier=classifier, name=name)
             self.save_best_params(model)
         self.epoch += 1
+
+    def add_kl(self, model, data_loader, name='train'):
+        models = [VAE, VAEC, SVAEC]
+        if type(model) in models:
+            kl = compute_kl(model, data_loader)
+            self.history["KL_%s" % name].append(kl)
+            if self.verbose:
+                print("KL %s is: %4f" % (name, kl))
 
     def add_ll(self, model, data_loader, name='train'):
         models = [VAE, VAEC, SVAEC]

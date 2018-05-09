@@ -13,7 +13,6 @@ from sklearn.manifold import TSNE
 def compute_accuracy(vae, data_loader, classifier=None):
     all_y_pred = []
     all_labels = []
-
     for i_batch, tensors in enumerate(data_loader):
         if vae.use_cuda:
             tensors = to_cuda(tensors)

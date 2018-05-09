@@ -101,6 +101,8 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
 
         if not early_stopping.update(total_train_loss):
             break
+        stats.history["KL_train"].append(torch.mean(kl_divergence_train).item())
+        stats.history["KL_test"].append(torch.mean(kl_divergence_test).item())
         stats.callback(vae, data_loader_train, data_loader_test)
     stats.display_time()
     return stats
