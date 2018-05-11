@@ -1,8 +1,12 @@
+from .lvae import DVAE, LVAE
+from .lvaec import LVAEC
 from .svaec import SVAEC
 from .vae import VAE
 from .vaec import VAEC
-from .lvaec import LVAEC
-__all__ = ['LVAEC',
-            'VAEC',
+
+__all__ = ['LVAE',
+           'DVAE',
+           'LVAEC',
+           'VAEC',
            'SVAEC',
            'VAE']

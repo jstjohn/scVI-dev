@@ -7,13 +7,9 @@ from torch.distributions import Normal, kl_divergence as kl
 
 from scvi.metrics.log_likelihood import log_zinb_positive, log_nb_positive
 from scvi.models.modules import Encoder, DecoderSCVI
+from .utils import log_mean_exp
 
 torch.backends.cudnn.benchmark = True
-
-
-def log_mean_exp(x, axis):
-    m = torch.max(x, dim=axis, keepdim=True)[0]
-    return m + torch.log(torch.mean(torch.exp(x - m), dim=axis, keepdim=True))
 
 
 # VAE model
@@ -101,7 +97,7 @@ class VAE(nn.Module):
 
         return reconst_loss, kl_divergence
 
-    def log_likelihood(self, x, local_l_mean, local_l_var, batch_index=None, n_samples=100):
+    def log_likelihood(self, x, local_l_mean, local_l_var, batch_index=None, labels=None, n_samples=100):
         x = x.repeat(1, n_samples).view(-1, x.size(1))
         local_l_mean = local_l_mean.repeat(1, n_samples).view(-1, 1)
         local_l_var = local_l_var.repeat(1, n_samples).view(-1, 1)

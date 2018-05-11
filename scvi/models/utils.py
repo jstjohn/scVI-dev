@@ -17,6 +17,11 @@ def enumerate_discrete(x, y_dim):
     return torch.cat([batch(batch_size, i) for i in range(y_dim)])
 
 
+def log_mean_exp(x, axis):
+    m = torch.max(x, dim=axis, keepdim=True)[0]
+    return m + torch.log(torch.mean(torch.exp(x - m), dim=axis, keepdim=True))
+
+
 @register_kl(Multinomial, Multinomial)
 def kl_multinomial_multinomial(p, q):
     return torch.sum(torch.mul(p.probs, torch.log(q.probs) - torch.log(p.probs + 1e-8)), dim=-1)

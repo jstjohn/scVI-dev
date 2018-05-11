@@ -164,12 +164,16 @@ class LadderDecoder(Decoder):
         p_m = self.mean_decoder(p)
         p_v = torch.exp(self.var_decoder(p))
 
-        pr1, pr2 = (1 / torch.exp(q_v_hat), 1 / torch.exp(p_v))
+        pr1, pr2 = (1 / q_v_hat, 1 / p_v)
 
         q_m = ((q_m_hat * pr1) + (p_m * pr2)) / (pr1 + pr2)
         q_v = 1 / (pr1 + pr2)
+
         latent = self.reparameterize(q_m, q_v)
         return (q_m, q_v, latent), (p_m, p_v)
+        # In case we study the regular
+        # latent = self.reparameterize(q_m_hat, q_v_hat)
+        # return (q_m_hat, q_v_hat, latent), (p_m, p_v)
 
 
 # Classifier
@@ -187,3 +191,26 @@ class Classifier(nn.Module):
     def forward(self, x):
         # Parameters for latent distribution
         return self.classifier(x)
+
+
+class ListModule(nn.Module):
+    def __init__(self, *args):
+        super(ListModule, self).__init__()
+        idx = 0
+        for module in args:
+            self.add_module(str(idx), module)
+            idx += 1
+
+    def __getitem__(self, idx):
+        if idx < 0 or idx >= len(self._modules):
+            raise IndexError('index {} is out of range'.format(idx))
+        it = iter(self._modules.values())
+        for i in range(idx):
+            next(it)
+        return next(it)
+
+    def __iter__(self):
+        return iter(self._modules.values())
+
+    def __len__(self):
+        return len(self._modules)

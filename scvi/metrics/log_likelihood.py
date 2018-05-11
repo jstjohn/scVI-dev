@@ -55,8 +55,8 @@ def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
     def softplus(x):
         return torch.log(1 + torch.exp(x))
 
-    case_zero = softplus((- pi + theta * torch.log(theta + eps) - theta * torch.log(theta + mu + eps)))
-    - softplus(-pi)
+    case_zero = (softplus((- pi + theta * torch.log(theta + eps) - theta * torch.log(theta + mu + eps)))
+                 - softplus(-pi))
 
     case_non_zero = - pi - softplus(-pi) + theta * torch.log(theta + eps) - theta * torch.log(
         theta + mu + eps) + x * torch.log(mu + eps) - x * torch.log(theta + mu + eps) + torch.lgamma(
