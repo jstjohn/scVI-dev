@@ -15,7 +15,7 @@ def broadcast_labels(y, *o, n_broadcast=-1):
         raise "Broadcast must have at least one reference argument"
     if y is None:
         ys = enumerate_discrete(o[0], n_broadcast)
-        new_o = iterate(o, lambda x: x.repeat(n_broadcast, 1))
+        new_o = iterate(o, lambda x: x.repeat(n_broadcast, 1) if len(x.size()) == 2 else x.repeat(n_broadcast))
     else:
         ys = one_hot(y, n_broadcast)
         new_o = o
