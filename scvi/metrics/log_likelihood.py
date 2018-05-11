@@ -22,6 +22,22 @@ def compute_log_likelihood(vae, data_loader):
     return log_lkl / n_samples
 
 
+@no_grad()
+@eval_modules()
+def compute_true_log_likelihood(vae, data_loader, n_samples=100):
+    # Compute log likelihood using importance sampling - must be defined in vae object
+    log_lkl = 0
+    for i_batch, tensors in enumerate(data_loader):
+        if vae.use_cuda:
+            tensors = to_cuda(tensors)
+        sample_batch, local_l_mean, local_l_var, batch_index, labels = tensors
+        sample_batch = sample_batch.type(torch.float32)
+        reconst_loss = vae.log_likelihood(sample_batch, local_l_mean, local_l_var, batch_index=batch_index,
+                                          labels=labels, n_samples=n_samples)
+        log_lkl += torch.sum(reconst_loss).item()
+    return log_lkl / len(data_loader.sampler.indices)
+
+
 def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
     """
     Note: All inputs are torch Tensors

@@ -11,6 +11,11 @@ from scvi.models.modules import Encoder, DecoderSCVI
 torch.backends.cudnn.benchmark = True
 
 
+def log_mean_exp(x, axis):
+    m = torch.max(x, dim=axis, keepdim=True)[0]
+    return m + torch.log(torch.mean(torch.exp(x - m), dim=axis, keepdim=True))
+
+
 # VAE model
 class VAE(nn.Module):
     def __init__(self, n_input, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1, dispersion="gene",
@@ -95,3 +100,29 @@ class VAE(nn.Module):
         kl_divergence = kl_divergence_z + kl_divergence_l
 
         return reconst_loss, kl_divergence
+
+    def log_likelihood(self, x, local_l_mean, local_l_var, batch_index=None, n_samples=100):
+        x = x.repeat(1, n_samples).view(-1, x.size(1))
+        local_l_mean = local_l_mean.repeat(1, n_samples).view(-1, 1)
+        local_l_var = local_l_var.repeat(1, n_samples).view(-1, 1)
+        x_ = x
+        if self.log_variational:
+            x_ = torch.log(1 + x_)
+
+        qz_m, qz_v, z = self.z_encoder(x_)
+        ql_m, ql_v, library = self.l_encoder(x_)
+
+        ll = 0
+        mean = torch.zeros_like(qz_m)
+        scale = torch.ones_like(qz_v)
+        ll += (- Normal(mean, scale).log_prob(z) +
+               Normal(qz_m, torch.sqrt(qz_v)).log_prob(z)).sum(dim=1)
+
+        ll += (- Normal(local_l_mean, torch.sqrt(local_l_var)).log_prob(library) +
+               Normal(ql_m, torch.sqrt(ql_v)).log_prob(library)).sum(dim=1)
+
+        px_scale, px_rate, px_dropout = self.decoder(self.dispersion, z, library, batch_index)
+
+        ll += -log_zinb_positive(x, px_rate, torch.exp(self.px_r), px_dropout)
+        ll = ll.view(-1, n_samples)
+        return log_mean_exp(ll, -1)
