@@ -1,10 +1,11 @@
-import torch
 import numpy as np
-from scvi.utils import no_grad, eval_modules, to_cuda
+import torch
 from sklearn.cluster import KMeans
-from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+
+from scvi.utils import no_grad, eval_modules, to_cuda
 
 
 @no_grad()
@@ -86,7 +87,7 @@ def compute_worst_accuracy(accuracy_classes):
 
 
 # The following functions require numpy arrays as inputs
-def compute_accuracy_svc(data_train, data_test, labels_train, labels_test):
+def compute_accuracy_svc(data_train, data_test, labels_train, labels_test, unit_test=True):
     # trains a SVC to predict the labels of data points in data_loader_test
     # uses grid search with plausible parameters
 
@@ -95,6 +96,8 @@ def compute_accuracy_svc(data_train, data_test, labels_train, labels_test):
     param_grid = [
         {'C': [1, 10, 100, 1000], 'kernel': ['linear']},
         {'C': [1, 10, 100, 1000], 'gamma': [0.001, 0.0001], 'kernel': ['rbf']}]
+    if unit_test:
+        param_grid = [{'C': [1], 'kernel': ['linear']}]
     svc = SVC()
     clf = GridSearchCV(svc, param_grid)
     clf.fit(data_train, labels_train)
@@ -109,7 +112,7 @@ def compute_accuracy_svc(data_train, data_test, labels_train, labels_test):
     return accuracy_train, accuracy_test
 
 
-def compute_accuracy_rf(data_train, data_test, labels_train, labels_test):
+def compute_accuracy_rf(data_train, data_test, labels_train, labels_test, unit_test=True):
     # trains a Decision Tree to predict the labels of data points in data_loader_test
     # uses grid search with plausible parameters
 
@@ -118,6 +121,8 @@ def compute_accuracy_rf(data_train, data_test, labels_train, labels_test):
     # Definitely more hyper-parameters than in scMAP (they only have n_estimators = 50
     # and the rest set to default
     param_grid = {'max_depth': np.arange(3, 10), 'n_estimators': [10, 50, 100, 200]}
+    if unit_test:
+        param_grid = [{'max_depth': [3], 'n_estimators': [10]}]
     clf = GridSearchCV(rf, param_grid)
     clf.fit(data_train, labels_train)
 

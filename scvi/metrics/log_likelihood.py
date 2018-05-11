@@ -18,7 +18,8 @@ def compute_log_likelihood(vae, data_loader):
         reconst_loss, kl_divergence = vae(sample_batch, local_l_mean, local_l_var, batch_index=batch_index,
                                           y=labels)
         log_lkl += torch.sum(reconst_loss).item()
-    return log_lkl / len(data_loader.sampler.indices)
+    n_samples = len(data_loader.dataset) if data_loader.sampler is None else len(data_loader.sampler.indices)
+    return log_lkl / n_samples
 
 
 def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
@@ -45,10 +46,7 @@ def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
         theta + mu + eps) + x * torch.log(mu + eps) - x * torch.log(theta + mu + eps) + torch.lgamma(
         x + theta) - torch.lgamma(theta.view(1, theta.size(0))) - torch.lgamma(x + 1)
 
-    mask = x.clone()
-    mask[mask < eps] = 1
-    mask[mask >= eps] = 0
-    res = torch.mul(mask, case_zero) + torch.mul(1 - mask, case_non_zero)
+    res = torch.mul((x < eps).type(torch.float32), case_zero) + torch.mul((x > eps).type(torch.float32), case_non_zero)
     return torch.sum(res, dim=-1)
 
 

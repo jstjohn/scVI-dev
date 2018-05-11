@@ -32,9 +32,11 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
     tt_split = int(tt_split * len(gene_dataset))  # 90%/10% train/test split
 
     data_loader_train = DataLoader(gene_dataset, batch_size=128, pin_memory=use_cuda,
-                                   sampler=SubsetRandomSampler(example_indices[:tt_split]))
+                                   sampler=SubsetRandomSampler(example_indices[:tt_split]),
+                                   collate_fn=gene_dataset.collate_fn)
     data_loader_test = DataLoader(gene_dataset, batch_size=128, pin_memory=use_cuda,
-                                  sampler=SubsetRandomSampler(example_indices[tt_split:]))
+                                  sampler=SubsetRandomSampler(example_indices[tt_split:]),
+                                  collate_fn=gene_dataset.collate_fn)
     vae = model(gene_dataset.nb_genes, n_batch=gene_dataset.n_batches * use_batches, n_labels=gene_dataset.n_labels,
                 use_cuda=use_cuda)
     stats = train(vae, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr, benchmark=benchmark)
@@ -53,7 +55,7 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
 
     # - batch mixing
     if gene_dataset.n_batches == 2:
-        latent, batch_indices, _ = get_latent(vae, data_loader_train)
+        latent, batch_indices, labels = get_latent(vae, data_loader_train)
         print("Entropy batch mixing :", entropy_batch_mixing(latent.cpu().numpy(), batch_indices.cpu().numpy()))
         if show_batch_mixing:
             show_t_sne(latent.cpu().numpy(), np.array([batch[0] for batch in batch_indices.cpu().numpy()]))
@@ -82,9 +84,11 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     train_indices = example_indices[:tt_split]
     test_indices = example_indices[tt_split:]
     data_loader_train = DataLoader(gene_dataset, batch_size=128, pin_memory=use_cuda,
-                                   sampler=SubsetRandomSampler(train_indices))
+                                   sampler=SubsetRandomSampler(train_indices),
+                                   collate_fn=gene_dataset.collate_fn)
     data_loader_test = DataLoader(gene_dataset, batch_size=128, pin_memory=use_cuda,
-                                  sampler=SubsetRandomSampler(test_indices))
+                                  sampler=SubsetRandomSampler(test_indices),
+                                  collate_fn=gene_dataset.collate_fn)
 
     # We start by trying classic ML techniques to use them as benchmarks
 
@@ -111,12 +115,14 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     axes[0].plot(np.repeat(accuracy_train, n_epochs), '--', label='Clustering baseline')
     axes[1].plot(np.repeat(accuracy_train, n_epochs), '--')
 
-    accuracy_train_svc, accuracy_test_svc = compute_accuracy_svc(data_train, data_test, labels_train, labels_test)
+    accuracy_train_svc, accuracy_test_svc = compute_accuracy_svc(data_train, data_test, labels_train, labels_test,
+                                                                 unit_test=True)
     print(accuracy_test_svc)
     axes[0].plot(np.repeat(accuracy_train_svc, n_epochs), label='SVC')
     axes[1].plot(np.repeat(accuracy_test_svc, n_epochs))
 
-    accuracy_train_dt, accuracy_test_dt = compute_accuracy_rf(data_train, data_test, labels_train, labels_test)
+    accuracy_train_dt, accuracy_test_dt = compute_accuracy_rf(data_train, data_test, labels_train, labels_test,
+                                                              unit_test=True)
     print(accuracy_test_dt)
     axes[0].plot(np.repeat(accuracy_train_dt, n_epochs), label='RF')
     axes[1].plot(np.repeat(accuracy_test_dt, n_epochs))
@@ -163,8 +169,7 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     # ========== The VAEC model ===========
 
     # print("Trying VAEC model")
-    # prior = torch.FloatTensor(
-    #     [(gene_dataset.labels == i).type(torch.float32).mean() for i in range(gene_dataset.n_labels)])
+    prior = torch.FloatTensor([(gene_dataset.labels == i).mean() for i in range(gene_dataset.n_labels)])
     #
     # vaec = VAEC(gene_dataset.nb_genes, n_labels=gene_dataset.n_labels, y_prior=prior,
     #             n_latent=n_latent, use_cuda=use_cuda)
@@ -177,9 +182,6 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
 
     # ========== The M1+M2 model trained jointly ===========
     print("Trying out M1+M2 optimized jointly")
-    prior = torch.FloatTensor(
-        [(gene_dataset.labels == i).type(torch.float32).mean() for i in range(gene_dataset.n_labels)])
-
     svaec = SVAEC(gene_dataset.nb_genes, n_labels=gene_dataset.n_labels, y_prior=prior, n_latent=n_latent,
                   use_cuda=use_cuda)
 
