@@ -35,7 +35,7 @@ class LVAEC(nn.Module):
         self.dispersion = 'gene'
         self.px_r = torch.nn.Parameter(torch.randn(n_input, ))
         self.ladder_encoders = ListModule(
-            *([LadderEncoder(n_input, n_hidden=n_hidden, n_latent=n_latent_l[0], n_layers=n_layers, n_cat=n_labels)] +
+            *([LadderEncoder(n_input, n_hidden=n_hidden, n_latent=n_latent_l[0], n_layers=n_layers, n_cat=0)] +
               [LadderEncoder(n_input=n_hidden, n_hidden=n_hidden, n_latent=n_latent, n_cat=n_labels) for n_latent in
                n_latent_l[1:]]))
         self.ladder_decoders = ListModule(
@@ -47,6 +47,11 @@ class LVAEC(nn.Module):
         if self.use_cuda:
             self.cuda()
             self.y_prior = self.y_prior.cuda()
+
+    def classify(self, x):
+        x_ = torch.log(1 + x)
+        (_, _, _), q = self.ladder_encoders[0](x_)
+        return self.classifier(q)
 
     def forward(self, x, local_l_mean, local_l_var, batch_index=None, y=None):
         is_labelled = False if y is None else True

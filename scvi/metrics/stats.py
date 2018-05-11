@@ -4,13 +4,13 @@ from collections import defaultdict
 import numpy as np
 
 from scvi.metrics.classification import compute_accuracy_classes, \
-    compute_unweighted_accuracy, compute_worst_accuracy, compute_weighted_accuracy
+    compute_unweighted_accuracy, compute_worst_accuracy, compute_weighted_accuracy, compute_accuracy
 from scvi.metrics.log_likelihood import compute_log_likelihood
-from scvi.models import VAE, VAEC, SVAEC, LVAE, DVAE
+from scvi.models import VAE, VAEC, SVAEC, LVAE, DVAE, LVAEC
 
 
 class Stats:
-    def __init__(self, verbose=True, record_freq=1, n_epochs=-1, benchmark=False, names=['train', 'test', 'val']):
+    def __init__(self, verbose=True, record_freq=5, n_epochs=-1, benchmark=False, names=['train', 'test', 'val']):
         self.verbose = verbose
         self.record_freq = record_freq
         self.n_epochs = n_epochs
@@ -36,7 +36,7 @@ class Stats:
         self.epoch += 1
 
     def add_ll(self, model, data_loader, name='train'):
-        models = [VAE, VAEC, SVAEC, LVAE, DVAE]
+        models = [VAE, VAEC, SVAEC, LVAE, DVAE, LVAEC]
         if type(model) in models:
             log_likelihood = compute_log_likelihood(model, data_loader)
             self.history["LL_%s" % name].append(log_likelihood)
@@ -44,10 +44,10 @@ class Stats:
                 print("LL %s is: %4f" % (name, log_likelihood))
 
     def add_accuracy(self, model, data_loader, classifier=None, name='train'):
-        models = [VAEC, SVAEC]
+        models = [VAEC, SVAEC, LVAEC]
         if type(model) in models or classifier:
             accuracy_classes, classes_probabilities = compute_accuracy_classes(model, data_loader, classifier)
-            # accuracy = compute_accuracy(model, data_loader, classifier)
+            accuracy = compute_accuracy(model, data_loader, classifier)
             accuracy = compute_unweighted_accuracy(accuracy_classes, classes_probabilities)
             weighted_accuracy = compute_weighted_accuracy(accuracy_classes, classes_probabilities)
             worst_accuracy = compute_worst_accuracy(accuracy_classes)
