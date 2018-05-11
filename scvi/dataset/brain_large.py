@@ -79,6 +79,7 @@ class BrainLargeDataset(GeneExpressionDataset):
     def preprocess(self):
         print("Preprocessing Brain Large data")
         tic = time.time()
+        np.random.seed(0)
 
         filtered_matrix_h5 = self.save_path + self.download_name
         gene_bc_matrix = get_matrix_from_h5(filtered_matrix_h5, self.genome)

@@ -96,6 +96,17 @@ class Encoder(nn.Module):
         return q_m, q_v, latent
 
 
+# Encoder
+class LadderEncoder(Encoder):
+    def forward(self, x, o=None):
+        # Parameters for latent distribution
+        q = self.encoder(x, o)
+        q_m = self.mean_encoder(q)
+        q_v = torch.exp(self.var_encoder(q))
+        latent = self.reparameterize(q_m, q_v)
+        return (q_m, q_v, latent), q
+
+
 # Decoder
 class DecoderSCVI(nn.Module):
     def __init__(self, n_latent, n_input, n_hidden=128, n_layers=1, dropout_rate=0.1, n_batch=0, n_labels=0):
@@ -142,6 +153,23 @@ class Decoder(nn.Module):
         p_m = self.mean_decoder(p)
         p_v = torch.exp(self.var_decoder(p))
         return p_m, p_v
+
+
+class LadderDecoder(Decoder):
+    def reparameterize(self, mu, var):
+        return Normal(mu, var.sqrt()).rsample()
+
+    def forward(self, x, q_m_hat, q_v_hat, o=None):
+        p = self.decoder(x, o)
+        p_m = self.mean_decoder(p)
+        p_v = torch.exp(self.var_decoder(p))
+
+        pr1, pr2 = (1 / torch.exp(q_v_hat), 1 / torch.exp(p_v))
+
+        q_m = ((q_m_hat * pr1) + (p_m * pr2)) / (pr1 + pr2)
+        q_v = 1 / (pr1 + pr2)
+        latent = self.reparameterize(q_m, q_v)
+        return (q_m, q_v, latent), (p_m, p_v)
 
 
 # Classifier
