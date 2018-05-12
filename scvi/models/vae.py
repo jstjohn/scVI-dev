@@ -7,7 +7,7 @@ from torch.distributions import Normal, kl_divergence as kl
 
 from scvi.metrics.log_likelihood import log_zinb_positive, log_nb_positive
 from scvi.models.modules import Encoder, DecoderSCVI
-from .utils import log_mean_exp
+from .utils import log_mean_exp, repeat
 
 torch.backends.cudnn.benchmark = True
 
@@ -34,6 +34,7 @@ class VAE(nn.Module):
                                    dropout_rate=dropout_rate, n_batch=n_batch)
 
         self.use_cuda = use_cuda and torch.cuda.is_available()
+        self.n_latent_layers = 1
         if self.use_cuda:
             self.cuda()
 
@@ -66,6 +67,9 @@ class VAE(nn.Module):
     def sample(self, z):
         return self.px_scale_decoder(z)
 
+    def get_latent(self, x, label=None):
+        return [self.sample_from_posterior_z(x)]
+
     def forward(self, x, local_l_mean, local_l_var, batch_index=None, y=None):  # same signature as loss
         # Parameters for z latent distribution
         x_ = x
@@ -97,10 +101,9 @@ class VAE(nn.Module):
 
         return reconst_loss, kl_divergence
 
-    def log_likelihood(self, x, local_l_mean, local_l_var, batch_index=None, labels=None, n_samples=100):
-        x = x.repeat(1, n_samples).view(-1, x.size(1))
-        local_l_mean = local_l_mean.repeat(1, n_samples).view(-1, 1)
-        local_l_var = local_l_var.repeat(1, n_samples).view(-1, 1)
+    def log_likelihood(self, x, local_l_mean, local_l_var, batch_index=None, labels=None, n_samples=10):
+        x, local_l_mean, local_l_var, batch_index = repeat(x, local_l_mean, local_l_var, batch_index,
+                                                           n_samples=n_samples)
         x_ = x
         if self.log_variational:
             x_ = torch.log(1 + x_)

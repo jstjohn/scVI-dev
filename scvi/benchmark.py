@@ -1,17 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from scvi.metrics.classification import compute_accuracy_svc, compute_accuracy_rf,\
-    compute_accuracy_md, compute_accuracy_classes
-from sklearn.decomposition import PCA
 from scvi.dataset import CortexDataset, load_datasets
 from scvi.metrics.adapt_encoder import adapt_encoder
+from scvi.metrics.classification import compute_accuracy_svc, compute_accuracy_rf, \
+    compute_accuracy_md, compute_accuracy_classes
 from scvi.metrics.clustering import entropy_batch_mixing, get_latent
 from scvi.metrics.differential_expression import get_statistics
 from scvi.metrics.imputation import imputation
+from scvi.metrics.log_likelihood import compute_true_log_likelihood
 from scvi.metrics.visualization import show_t_sne
 from scvi.models import VAE, SVAEC
 from scvi.models.modules import Classifier
@@ -44,6 +45,7 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
     if isinstance(vae, VAE):
         best_ll = adapt_encoder(vae, data_loader_test, n_path=1, n_epochs=1, record_freq=1)
         print("Best ll was :", best_ll)
+        print("True ll is :", compute_true_log_likelihood(vae, data_loader_train, n_samples=1))
 
     # - log-likelihood
     print("Log-likelihood Train:", stats.history["LL_train"][stats.best_index])

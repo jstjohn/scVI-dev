@@ -22,6 +22,10 @@ def broadcast_labels(y, *o, n_broadcast=-1):
     return (ys,) + new_o
 
 
+def repeat(*os, n_samples=10):
+    return [o.repeat(1, n_samples).view(-1, o.size(1)) for o in os]
+
+
 def one_hot(index, n_cat):
     onehot = torch.zeros(index.size(0), n_cat, device=index.device)
     onehot.scatter_(1, index.type(torch.long), 1)

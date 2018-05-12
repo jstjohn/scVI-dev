@@ -51,7 +51,7 @@ def train(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=No
 
 @enable_grad()
 def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=None, benchmark=False,
-                          classification_ratio=0):
+                          classification_ratio=1):
     # Defining the optimizer
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, vae.parameters()), lr=lr, eps=0.01)
 
