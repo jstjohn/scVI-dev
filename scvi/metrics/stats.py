@@ -3,9 +3,8 @@ from collections import defaultdict
 
 import numpy as np
 
-from scvi.metrics.classification import compute_accuracy_classes, \
-    compute_unweighted_accuracy, compute_worst_accuracy, compute_weighted_accuracy, compute_accuracy
-from scvi.metrics.log_likelihood import compute_log_likelihood
+from scvi.metrics.classification import compute_accuracy
+from scvi.metrics.log_likelihood import compute_true_log_likelihood
 from scvi.models import VAE, VAEC, SVAEC, LVAE, DVAE, LVAEC
 
 
@@ -38,24 +37,21 @@ class Stats:
     def add_ll(self, model, data_loader, name='train'):
         models = [VAE, VAEC, SVAEC, LVAE, DVAE, LVAEC]
         if type(model) in models:
-            log_likelihood = compute_log_likelihood(model, data_loader)
+            # log_likelihood = compute_log_likelihood(model, data_loader)
+            log_likelihood = compute_true_log_likelihood(model, data_loader, n_samples=10)
             self.history["LL_%s" % name].append(log_likelihood)
             if self.verbose:
-                print("LL %s is: %4f" % (name, log_likelihood))
+                print("True LL %s is: %4f" % (name, log_likelihood))
 
     def add_accuracy(self, model, data_loader, classifier=None, name='train'):
         models = [VAEC, SVAEC, LVAEC]
         if type(model) in models or classifier:
-            accuracy_classes, classes_probabilities = compute_accuracy_classes(model, data_loader, classifier)
             accuracy = compute_accuracy(model, data_loader, classifier)
-            accuracy = compute_unweighted_accuracy(accuracy_classes, classes_probabilities)
-            weighted_accuracy = compute_weighted_accuracy(accuracy_classes, classes_probabilities)
-            worst_accuracy = compute_worst_accuracy(accuracy_classes)
-            self.history["Accuracy_%s" % name].append(accuracy)
-            self.history["Weighted_accuracy_%s" % name].append(weighted_accuracy)
-            self.history["Worst_accuracy_%s" % name].append(worst_accuracy)
+            self.history["Accuracy_%s" % name].append(accuracy.unweighted)
+            self.history["Weighted_accuracy_%s" % name].append(accuracy.weighted)
+            self.history["Worst_accuracy_%s" % name].append(accuracy.worst)
             if self.verbose:
-                print("Accuracy %s is: %4f" % (name, accuracy))
+                print("Accuracy %s is: %4f" % (name, accuracy.unweighted))
 
     def save_best_params(self, model):
         current_score = self.history["LL_%s" % self.names[0]][-1]

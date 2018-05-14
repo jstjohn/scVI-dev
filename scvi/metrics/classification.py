@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
@@ -6,6 +8,34 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 
 from scvi.utils import no_grad, eval_modules, to_cuda
+
+Accuracy = namedtuple('Accuracy', ['weighted', 'unweighted', 'worst'])
+
+
+def full_accuracy(accuracy_classes, classes_probabilities):
+    return Accuracy(weighted=compute_weighted_accuracy(accuracy_classes),
+                    unweighted=compute_unweighted_accuracy(accuracy_classes, classes_probabilities),
+                    worst=compute_worst_accuracy(accuracy_classes)
+                    )
+
+
+def compute_accuracy_classes(y, labels):
+    n_labels = len(np.unique(labels))
+    accuracy_classes = np.array([np.mean((labels[labels == cl] == y[labels == cl])) for cl in range(n_labels)])
+    classes_probabilities = np.array([np.mean(labels == cl) for cl in range(n_labels)])
+    return accuracy_classes, classes_probabilities
+
+
+def compute_unweighted_accuracy(accuracy_classes, classes_probabilities):
+    return np.dot(accuracy_classes, classes_probabilities)
+
+
+def compute_weighted_accuracy(accuracy_classes):
+    return np.mean(accuracy_classes)
+
+
+def compute_worst_accuracy(accuracy_classes):
+    return np.min(accuracy_classes)
 
 
 @no_grad()
@@ -29,65 +59,14 @@ def compute_accuracy(vae, data_loader, classifier=None):
             y_pred = vae.classify(sample_batch).argmax(dim=-1)
         all_y_pred += [y_pred]
 
-    accuracy = (torch.cat(all_y_pred) == torch.cat(all_labels)).type(torch.float32).mean().item()
-
-    return accuracy
-
-
-@no_grad()
-@eval_modules()
-def compute_accuracy_classes(vae, data_loader, classifier=None):
-    n_labels = data_loader.dataset.n_labels
-    all_y_pred = []
-    all_labels = []
-    for i_batch, tensors in enumerate(data_loader):
-        if vae.use_cuda:
-            tensors = to_cuda(tensors)
-        sample_batch, _, _, _, labels = tensors
-        sample_batch = sample_batch.type(torch.float32)
-        all_labels += [labels.view(-1)]
-
-        if classifier is not None:
-            # Then we use the specified classifier
-            mu_z, _, _ = vae.z_encoder(sample_batch)
-            y_pred = classifier(mu_z).argmax(dim=-1)
-        else:
-            # Then the vae must implement a classify function
-            y_pred = vae.classify(sample_batch).argmax(dim=-1)
-        all_y_pred += [y_pred]
-    # accuracy for each class and proportion of each class amongst the dataset
-    accuracy_classes = np.zeros(n_labels)
-    classes_probabilities = np.zeros(n_labels)
-
-    all_y_pred = torch.cat(all_y_pred)
-    all_labels = torch.cat(all_labels)
-    for cl in range(n_labels):
-        classes_probabilities[cl] = all_labels[all_labels == cl].size()[0]
-        if all_y_pred[all_labels == cl].size()[0] == 0:
-            # No labels to be predicted
-            accuracy_classes[cl] = 1
-        else:
-            accuracy_classes[cl] += (all_y_pred[all_labels == cl]
-                                     == all_labels[all_labels == cl]).type(torch.float32).mean().item()
-    # normalize
-    classes_probabilities /= np.sum(classes_probabilities)
-    return accuracy_classes, classes_probabilities
-
-
-def compute_unweighted_accuracy(accuracy_classes, classes_probabilities):
-    return np.dot(accuracy_classes, classes_probabilities)
-
-
-def compute_weighted_accuracy(accuracy_classes, classes_probabilities):
-    return np.mean(accuracy_classes)
-
-
-def compute_worst_accuracy(accuracy_classes):
-    return np.min(accuracy_classes)
+    all_y_pred = torch.cat(all_y_pred).cpu().numpy()
+    all_labels = torch.cat(all_labels).cpu().numpy()
+    accuracy_classes, classes_probabilities = compute_accuracy_classes(all_y_pred, all_labels)
+    return full_accuracy(accuracy_classes, classes_probabilities)
 
 
 # The following functions require numpy arrays as inputs
-def compute_accuracy_svc(data_train, data_test, labels_train, labels_test, unit_test=True):
+def compute_accuracy_svc(data_train, data_test, labels_train, labels_test, unit_test=False):
     # trains a SVC to predict the labels of data points in data_loader_test
     # uses grid search with plausible parameters
 
@@ -106,13 +85,11 @@ def compute_accuracy_svc(data_train, data_test, labels_train, labels_test, unit_
     y_pred_test = clf.predict(data_test)
     y_pred_train = clf.predict(data_train)
 
-    accuracy_train = np.mean(y_pred_train == labels_train)
-    accuracy_test = np.mean(y_pred_test == labels_test)
-
-    return accuracy_train, accuracy_test
+    return full_accuracy(*compute_accuracy_classes(y_pred_train, labels_train)), \
+           full_accuracy(*compute_accuracy_classes(y_pred_test, labels_test))
 
 
-def compute_accuracy_rf(data_train, data_test, labels_train, labels_test, unit_test=True):
+def compute_accuracy_rf(data_train, data_test, labels_train, labels_test, unit_test=False):
     # trains a Decision Tree to predict the labels of data points in data_loader_test
     # uses grid search with plausible parameters
 
@@ -130,10 +107,8 @@ def compute_accuracy_rf(data_train, data_test, labels_train, labels_test, unit_t
     y_pred_test = clf.predict(data_test)
     y_pred_train = clf.predict(data_train)
 
-    accuracy_train = np.mean(y_pred_train == labels_train)
-    accuracy_test = np.mean(y_pred_test == labels_test)
-
-    return accuracy_train, accuracy_test
+    return full_accuracy(*compute_accuracy_classes(y_pred_train, labels_train)), \
+           full_accuracy(*compute_accuracy_classes(y_pred_test, labels_test))
 
 
 def compute_accuracy_md(data_train_latent, data_test_latent, labels_train, labels_test, n_labels):

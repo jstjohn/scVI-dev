@@ -69,7 +69,7 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
 
 # Pipeline to compare different semi supervised models
 def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epochs_classifier=10, lr=1e-2,
-                                  use_batches=False, use_cuda=True, tt_split=0.1):
+                                  use_batches=False, use_cuda=True, tt_split=0.1, unit_test=False):
     gene_dataset = load_datasets(dataset_name)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(12, 5))
 
@@ -118,16 +118,16 @@ def run_benchmarks_classification(dataset_name, n_latent=10, n_epochs=10, n_epoc
     axes[1].plot(np.repeat(accuracy_train, n_epochs), '--')
 
     accuracy_train_svc, accuracy_test_svc = compute_accuracy_svc(data_train, data_test, labels_train, labels_test,
-                                                                 unit_test=True)
+                                                                 unit_test=unit_test)
     print(accuracy_test_svc)
-    axes[0].plot(np.repeat(accuracy_train_svc, n_epochs), label='SVC')
-    axes[1].plot(np.repeat(accuracy_test_svc, n_epochs))
+    axes[0].plot(np.repeat(accuracy_train_svc.unweighted, n_epochs), label='SVC')
+    axes[1].plot(np.repeat(accuracy_test_svc.unweighted, n_epochs))
 
     accuracy_train_dt, accuracy_test_dt = compute_accuracy_rf(data_train, data_test, labels_train, labels_test,
-                                                              unit_test=True)
+                                                              unit_test=unit_test)
     print(accuracy_test_dt)
-    axes[0].plot(np.repeat(accuracy_train_dt, n_epochs), label='RF')
-    axes[1].plot(np.repeat(accuracy_test_dt, n_epochs))
+    axes[0].plot(np.repeat(accuracy_train_dt.unweighted, n_epochs), label='RF')
+    axes[1].plot(np.repeat(accuracy_test_dt.unweighted, n_epochs))
 
     # Now we try out the different models and compare their accuracy
 
