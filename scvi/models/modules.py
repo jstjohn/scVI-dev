@@ -67,6 +67,8 @@ class ManyOneHotFCLayers(nn.Module):
                 one_hot_o = o
                 if o.size(1) != self.n_cat_list[i]:
                     one_hot_o = one_hot(o, self.n_cat_list[i])
+                elif o.size(1) == 1 and self.n_cat_list[i] == 1:
+                    one_hot_o = o.type(torch.float32)
                 one_hot_os += [one_hot_o]
         for layer in self.fc_layers:
             x = layer(torch.cat((x,) + tuple(one_hot_os), 1))
@@ -116,11 +118,11 @@ class DecoderSCVI(nn.Module):
         px = self.px_decoder(z, batch_index, y)
         px_scale = self.px_scale_decoder(px)
         px_dropout = self.px_dropout_decoder(px)
-        px_rate = torch.exp(library) * px_scale
+        px_rate = torch.exp(torch.clamp(library, 0, 8)) * px_scale  # Total UMI counts clamped to exp(8) ~ 3000
         if dispersion == "gene-cell":
             px_r = self.px_r_decoder(px)
             return px_scale, px_r, px_rate, px_dropout
-        elif dispersion == "gene":
+        else:  # dispersion == "gene" / "gene-batch" / "gene-label"
             return px_scale, px_rate, px_dropout
 
 
