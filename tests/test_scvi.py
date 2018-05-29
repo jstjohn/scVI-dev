@@ -30,5 +30,4 @@ def test_retina():
 
 
 def test_cbmc():
-    gene_dataset = load_datasets("cbmc", unit_test=True)
-    run_benchmarks(gene_dataset, n_epochs=1, show_batch_mixing=False)
+    run_benchmarks("cbmc", n_epochs=1, show_batch_mixing=False, unit_test=True)
