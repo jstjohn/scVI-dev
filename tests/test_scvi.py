@@ -5,12 +5,13 @@
 """Tests for `scvi` package."""
 from run_benchmarks import run_benchmarks
 from scvi.benchmark import run_benchmarks_classification
+from scvi.dataset import CbmcDataset
 from scvi.models import VAEC, VAE, SVAEC
 
 
 def test_synthetic_1():
     run_benchmarks("synthetic", n_epochs=1, use_batches=True, model=VAE)
-    run_benchmarks_classification("synthetic", n_epochs=1)
+    run_benchmarks_classification("synthetic", n_epochs=1, n_epochs_classifier=1)
 
 
 def test_synthetic_2():
@@ -31,3 +32,8 @@ def test_retina():
 
 def test_cbmc():
     run_benchmarks("cbmc", n_epochs=1, show_batch_mixing=False, unit_test=True)
+
+
+def test_subsample_cbmc():
+    cbmc_dataset = CbmcDataset(unit_test=True)
+    cbmc_dataset.export_unit_test()
