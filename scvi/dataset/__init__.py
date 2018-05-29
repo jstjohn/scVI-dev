@@ -1,9 +1,9 @@
-from scvi.dataset.brain_large import BrainLargeDataset
-from scvi.dataset.cortex import CortexDataset
-from scvi.dataset.dataset import GeneExpressionDataset
-from scvi.dataset.synthetic import SyntheticDataset
-from scvi.dataset.retina import RetinaDataset
-from scvi.dataset.cbmc import CbmcDataset
+from .brain_large import BrainLargeDataset
+from .cortex import CortexDataset
+from .dataset import GeneExpressionDataset
+from .synthetic import SyntheticDataset
+from .retina import RetinaDataset
+from .cbmc import CbmcDataset
 
 __all__ = ['SyntheticDataset',
            'CortexDataset',

@@ -19,10 +19,10 @@ class CbmcDataset(GeneExpressionDataset):
                 subsample_size = num_barcodes//100
                 rows.append(row[:subsample_size + 1])
 
-        with open('../../tests/data/cbmc_subsampled.csv', 'w') as csvfile:
-            data_writer = csv.writer(csvfile, delimiter=',')
+        with gzip.open('../../tests/data/cbmc_subsampled.csv.gz', 'w') as gzipfile:
             for row in rows:
-                data_writer.writerow(row)
+                line = ','.join(row) + '\n'
+                gzipfile.write(line.encode())
 
     def __init__(self, unit_test=False):
         self.save_path = 'data/'
@@ -60,4 +60,3 @@ class CbmcDataset(GeneExpressionDataset):
         gene_names = gene_names[selected]
 
         return expression_data, gene_names
-
