@@ -94,12 +94,14 @@ class GeneExpressionDataset(Dataset):
         n_cells, n_genes = self.X.shape
         new_n_cells = int(p_cells * n_genes) if type(p_cells) is not int else p_cells
         print("Downsampling from %i to %i cells" % (n_cells, new_n_cells))
-        # indices = np.random.choice(n_cells, size=new_n_cells, replace=False)
         indices = np.argsort(self.X.sum(axis=1))[::-1][:new_n_cells]
-        _subsample = lambda a, indices: a[indices]
+
+        def _subsample(a, indices):
+            return a[indices]
+
         self.X, self.local_means, self.local_vars, self.batch_indices, self.labels = (
-            _subsample(a, indices) for a in (self.X, self.local_means, self.local_vars, self.batch_indices, self.labels)
-        )
+            _subsample(a, indices) for a in (self.X, self.local_means, self.local_vars,
+                                             self.batch_indices, self.labels))
 
     @staticmethod
     def get_attributes_from_matrix(X, batch_index=0, labels=None):
