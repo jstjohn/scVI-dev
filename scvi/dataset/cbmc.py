@@ -1,43 +1,42 @@
-import collections
 import csv
 import gzip
 import numpy as np
 
 from .dataset import GeneExpressionDataset
 
-GeneCbmcMatrix = collections.namedtuple('GeneCmbcMatrix', ['gene_ids', 'gene_names', 'expressions'])
-
-
-def subsample_barcodes(gbm, barcode_indices, unit_test=False):
-    barcodes = gbm.barcodes[barcode_indices] if not unit_test else gbm.barcodes
-    return GeneCbmcMatrix(gbm.gene_ids, gbm.gene_names, barcodes,
-                        gbm.matrix[:, barcode_indices])
-
-
-def subsample_genes(gbm, genes_indices, unit_test=False):
-    gene_ids = gbm.gene_ids[genes_indices] if not unit_test else gbm.gene_ids
-    gene_names = gbm.gene_names[genes_indices] if not unit_test else gbm.gene_names
-    return GeneCbmcMatrix(gene_ids, gene_names, gbm.barcodes,
-                        gbm.matrix[genes_indices, :])
-
 
 class CbmcDataset(GeneExpressionDataset):
     url = "https://www.ncbi.nlm.nih.gov/geo/download/" + \
               "?acc=GSE100866&format=file&file=GSE100866%5FCBMC%5F8K%5F13AB%5F10X%2DRNA%5Fumi%2Ecsv%2Egz"
 
-    def __init__(self, subsample_size=None, unit_test=False, nb_genes_kept=720):
-        self.subsample_size = subsample_size if not unit_test else 128
+    def subsample_barcodes(self):
+        print("Subsamping cbmc data")
+        rows = []
+        with gzip.open(self.save_path + 'cbmc.csv.gz', "rt", encoding="utf8") as csvfile:
+            data_reader = csv.reader(csvfile, delimiter=',')
+            num_barcodes = 8617
+            for i, row in enumerate(data_reader):
+                subsample_size = num_barcodes//100
+                rows.append(row[:subsample_size + 1])
+
+        with open('../../tests/data/cbmc_subsampled.csv', 'w') as csvfile:
+            data_writer = csv.writer(csvfile, delimiter=',')
+            for row in rows:
+                data_writer.writerow(row)
+
+    def __init__(self, unit_test=False):
         self.save_path = 'data/'
         self.unit_test = unit_test
-        self.nb_genes_kept = nb_genes_kept
+
         # originally: GSE100866_CBMC_8K_13AB_10X-RNA_umi.csv.gz
 
         if not self.unit_test:
             self.download_name = 'cbmc.csv.gz'
         else:
-            self.download_name = "../tests/data/cbmc_subsampled.h5"
+            self.download_name = "../tests/data/cbmc_subsampled.csv.gz"
 
         expression_data, gene_names = self.download_and_preprocess()
+        # self.subsample_barcodes()
 
         super(CbmcDataset, self).__init__(
             *GeneExpressionDataset.get_attributes_from_matrix(
@@ -61,3 +60,4 @@ class CbmcDataset(GeneExpressionDataset):
         gene_names = gene_names[selected]
 
         return expression_data, gene_names
+
