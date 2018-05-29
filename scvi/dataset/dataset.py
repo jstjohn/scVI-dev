@@ -72,9 +72,9 @@ class GeneExpressionDataset(Dataset):
         indexes = np.array(batch)
         X = torch.FloatTensor(self.X[indexes]) if self.dense else torch.FloatTensor(self.X[indexes].toarray())
         return X, torch.FloatTensor(self.local_means[indexes]), \
-               torch.FloatTensor(self.local_vars[indexes]), \
-               torch.LongTensor(self.batch_indices[indexes]), \
-               torch.LongTensor(self.labels[indexes])
+           torch.FloatTensor(self.local_vars[indexes]), \
+           torch.LongTensor(self.batch_indices[indexes]), \
+           torch.LongTensor(self.labels[indexes])
 
     def subsample_genes(self, p_genes=1., subset_genes=None):
         n_cells, n_genes = self.X.shape
