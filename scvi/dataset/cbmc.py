@@ -27,19 +27,6 @@ class CbmcDataset(GeneExpressionDataset):
             *GeneExpressionDataset.get_attributes_from_matrix(
                 expression_data), gene_names=gene_names)
 
-    def export_unit_test(self, n_cells=50, n_genes=10):
-        self.subsample_cells(n_cells)
-        self.subsample_genes(n_genes)
-        subsampled_data = np.concatenate((self.gene_names.reshape(1, -1), self.X)).T
-
-        with gzip.open('tests/data/cbmc_subsampled.csv.gz', 'w') as gzipfile:
-            row = subsampled_data[0]  # Dummy row
-            line = ','.join(row) + '\n'
-            gzipfile.write(line.encode())
-            for row in subsampled_data:
-                line = ','.join(row) + '\n'
-                gzipfile.write(line.encode())
-
     def preprocess(self):
         print("Preprocessing cbmc data")
         rows = []
