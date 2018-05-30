@@ -5,9 +5,7 @@
 """Tests for `scvi` package."""
 from run_benchmarks import run_benchmarks
 from scvi.benchmark import run_benchmarks_classification
-from scvi.dataset import CbmcDataset
 from scvi.models import VAEC, VAE, SVAEC
-from tests.test_utils import export_cbmc_unit_test
 
 
 def test_synthetic_1():
