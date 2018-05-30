@@ -31,10 +31,5 @@ def test_retina():
     run_benchmarks("retina", n_epochs=1, show_batch_mixing=False, unit_test=True)
 
 
-def test_subsample_cbmc():
-    cbmc_dataset = CbmcDataset(unit_test=True)
-    export_cbmc_unit_test(cbmc_dataset)
-
-
 def test_cbmc():
     run_benchmarks("cbmc", n_epochs=1, show_batch_mixing=False, unit_test=True)
