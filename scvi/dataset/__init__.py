@@ -4,13 +4,15 @@ from .dataset import GeneExpressionDataset
 from .synthetic import SyntheticDataset
 from .retina import RetinaDataset
 from .cbmc import CbmcDataset
+from .brain_small import BrainSmallDataset
 
 __all__ = ['SyntheticDataset',
            'CortexDataset',
            'BrainLargeDataset',
            'RetinaDataset',
            'GeneExpressionDataset',
-           'CbmcDataset']
+           'CbmcDataset',
+           'BrainSmallDataset']
 
 
 def load_datasets(dataset_name, unit_test=False):
@@ -24,6 +26,8 @@ def load_datasets(dataset_name, unit_test=False):
         gene_dataset = RetinaDataset(unit_test=unit_test)
     elif dataset_name == 'cbmc':
         gene_dataset = CbmcDataset(unit_test=unit_test)
+    elif dataset_name == 'brain_small':
+        gene_dataset = BrainSmallDataset(unit_test=unit_test)
     else:
         raise "No such dataset available"
     return gene_dataset
