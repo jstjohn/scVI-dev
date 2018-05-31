@@ -1,8 +1,6 @@
 import numpy as np
 
-import csv
 import tarfile
-from pathlib import Path
 from scipy import io
 
 from .dataset import GeneExpressionDataset
@@ -16,13 +14,14 @@ class BrainSmallDataset(GeneExpressionDataset):
         self.save_path = 'data/'
         self.unit_test = unit_test
 
-        self.download_name = 'filtered_gene_bc_matrices.tar.gz'
         if not unit_test:
-            self.gene_file = "filtered_gene_bc_matrices/mm10/genes.tsv"
-            self.expression_file = "filtered_gene_bc_matrices/mm10/matrix.mtx"
+            self.download_name = "filtered_gene_bc_matrices.tar.gz"
+            self.gene_filename = "filtered_gene_bc_matrices/mm10/genes.tsv"
+            self.expression_filename = "filtered_gene_bc_matrices/mm10/matrix.mtx"
         else:
-            self.gene_file = "../tests/data/brain_small_subsampled/mm10/genes_subsampled.tsv"
-            self.expression_file = "../tests/data/brain_small_subsampled/mm10/matrix_subsampled.mtx"
+            self.download_name = "../tests/data/brain_small_subsampled.tar.gz"
+            self.gene_filename = "brain_small_subsampled/mm10/genes_subsampled.tsv"
+            self.expression_filename = "brain_small_subsampled/mm10/matrix_subsampled.mtx"
 
         expression_data, gene_names = self.download_and_preprocess()
 
@@ -31,23 +30,18 @@ class BrainSmallDataset(GeneExpressionDataset):
                 expression_data), gene_names=gene_names)
 
     def preprocess(self):
-        if not Path(self.save_path + self.download_name[:-7]).is_dir():
-            print("Unzipping Brain Small data")
-            tar = tarfile.open(self.save_path + self.download_name)
-            tar.extractall(self.save_path)
-            tar.close()
-
         print("Preprocessing Brain Small data")
         gene_names = []
 
-        def _store_tsv_data(file, des):
-            with open(file, "r") as tsv:
-                data_reader = csv.reader(tsv, delimiter="\t", quotechar='"')
-                for row in data_reader:
-                    des.append(row[0])
+        tar = tarfile.open(self.save_path + self.download_name)
+        gene_file = tar.extractfile(tar.getmember(self.gene_filename))
 
-        _store_tsv_data(self.save_path + self.gene_file, gene_names)
-        expression_data = io.mmread(self.save_path + self.expression_file).T.A
+        lines = gene_file.readlines()
+        for line in lines:
+            gene_names.append(line[:-2])  # remove "\n"
+
+        expression_file = tar.extractfile(tar.getmember(self.expression_filename))
+        expression_data = io.mmread(expression_file).T.A
 
         gene_names = np.array(gene_names, dtype=np.str)
 
