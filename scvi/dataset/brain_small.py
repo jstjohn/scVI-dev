@@ -2,9 +2,8 @@ import numpy as np
 
 import csv
 import tarfile
-import os
 from pathlib import Path
-from scipy import io, sparse
+from scipy import io
 
 from .dataset import GeneExpressionDataset
 
@@ -13,7 +12,6 @@ class BrainSmallDataset(GeneExpressionDataset):
     url = "http://cf.10xgenomics.com/samples/cell-exp/2.1.0/neuron_9k/" + \
           "neuron_9k_filtered_gene_bc_matrices.tar.gz"
 
-    # TODO: Should I only keep one of the 'filtered_gene_bc_matrices.tar.gz' and 'filtered_gene_bc_matrices'? (ask after submitting pull request)
     def __init__(self, unit_test=False):
         self.save_path = 'data/'
         self.unit_test = unit_test
@@ -31,21 +29,6 @@ class BrainSmallDataset(GeneExpressionDataset):
         super(BrainSmallDataset, self).__init__(
             *GeneExpressionDataset.get_attributes_from_matrix(
                 expression_data), gene_names=gene_names)
-
-    def export_unit_test(self, n_cells=50, n_genes=10):
-        self.subsample_cells(n_cells)
-        self.subsample_genes(n_genes)
-        matrix = sparse.coo_matrix(self.X.T)
-
-        path = "tests/data/brain_small_subsampled/mm10/"
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        with open(path + "genes_subsampled.tsv", "w") as tsv:
-            for row in self.gene_names:
-                tsv.write(row + "\n")
-
-        io.mmwrite(path + "matrix_subsampled.mtx", matrix)
 
     def preprocess(self):
         if not Path(self.save_path + self.download_name[:-7]).is_dir():
