@@ -35,3 +35,7 @@ def test_cbmc():
 
 def test_brain_small():
     run_benchmarks("brain_small", n_epochs=1, show_batch_mixing=False, unit_test=True)
+
+
+def test_hemato():
+    run_benchmarks("hemato", n_epochs=1, show_batch_mixing=False, unit_test=True)
