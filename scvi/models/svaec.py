@@ -14,7 +14,7 @@ class SVAEC(nn.Module):
     '''
 
     def __init__(self, n_input, n_labels, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1, n_batch=0,
-                 y_prior=None, use_cuda=False):
+                 y_prior=None, use_cuda=False, n_input_qc=None):
         super(SVAEC, self).__init__()
         self.n_labels = n_labels
         self.n_input = n_input
@@ -63,21 +63,21 @@ class SVAEC(nn.Module):
         ql_m, ql_v, library = self.l_encoder(x)
         return library
 
-    def get_sample_scale(self, x, y=None, batch_index=None):
+    def get_sample_scale(self, x, qc=None, y=None, batch_index=None):
         x = torch.log(1 + x)
         z = self.sample_from_posterior_z(x, y)
         px = self.decoder.px_decoder(z, batch_index, y)
         px_scale = self.decoder.px_scale_decoder(px)
         return px_scale
 
-    def get_sample_rate(self, x, y=None, batch_index=None):
+    def get_sample_rate(self, x, qc=None, y=None, batch_index=None):
         x = torch.log(1 + x)
         z = self.sample_from_posterior_z(x)
         library = self.sample_from_posterior_l(x)
         px = self.decoder.px_decoder(z, batch_index, y)
         return self.decoder.px_scale_decoder(px) * torch.exp(library)
 
-    def forward(self, x, local_l_mean, local_l_var, batch_index=None, y=None):
+    def forward(self, x, local_l_mean, local_l_var, qc=None, batch_index=None, y=None):
         is_labelled = False if y is None else True
 
         xs, ys = (x, y)

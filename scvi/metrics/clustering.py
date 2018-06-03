@@ -13,7 +13,7 @@ def get_latent(vae, data_loader):
     for tensors in data_loader:
         if vae.use_cuda:
             tensors = to_cuda(tensors)
-        sample_batch, local_l_mean, local_l_var, batch_index, label = tensors
+        sample_batch, qc_batch, local_l_mean, local_l_var, batch_index, label = tensors
         sample_batch = sample_batch.type(torch.float32)
         latent += [vae.sample_from_posterior_z(sample_batch, y=label)]
         batch_indices += [batch_index]

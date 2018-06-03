@@ -11,7 +11,8 @@ from scvi.models.utils import enumerate_discrete, one_hot
 # VAE model - for classification: VAEC
 class VAEC(nn.Module):
     def __init__(self, n_input, n_labels, n_hidden=128, n_latent=10, n_layers=1, dropout_rate=0.1, dispersion="gene",
-                 log_variational=True, reconstruction_loss="zinb", n_batch=0, y_prior=None, use_cuda=False):
+                 log_variational=True, reconstruction_loss="zinb", n_batch=0, y_prior=None, n_input_qc=0,
+                 use_cuda=False):
         super(VAEC, self).__init__()
         self.dispersion = dispersion
         self.log_variational = log_variational
@@ -56,21 +57,21 @@ class VAEC(nn.Module):
         ql_m, ql_v, library = self.l_encoder(x)
         return library
 
-    def get_sample_scale(self, x, y=None, batch_index=None):
+    def get_sample_scale(self, x, y=None, qc=None, batch_index=None):
         x = torch.log(1 + x)
         z = self.sample_from_posterior_z(x, y)
         px = self.decoder.px_decoder(z, batch_index, y)
         px_scale = self.decoder.px_scale_decoder(px)
         return px_scale
 
-    def get_sample_rate(self, x, y=None, batch_index=None):
+    def get_sample_rate(self, x, y=None, qc=None, batch_index=None):
         x = torch.log(1 + x)
         z = self.sample_from_posterior_z(x, y)
         library = self.sample_from_posterior_l(x)
         px = self.decoder.px_decoder(z, batch_index, y)
         return self.decoder.px_scale_decoder(px) * torch.exp(library)
 
-    def forward(self, x, local_l_mean, local_l_var, batch_index=None, y=None):
+    def forward(self, x, local_l_mean, local_l_var, qc=None, batch_index=None, y=None):
         is_labelled = False if y is None else True
 
         # Prepare for sampling

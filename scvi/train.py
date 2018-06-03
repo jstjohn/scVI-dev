@@ -23,7 +23,8 @@ def train(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=No
         for i_batch, (tensors_train) in enumerate(data_loader_train):
             if vae.use_cuda:
                 tensors_train = to_cuda(tensors_train)
-            sample_batch_train, local_l_mean_train, local_l_var_train, batch_index_train, labels_train = tensors_train
+            (sample_batch_train, qc_batch_train, local_l_mean_train,
+             local_l_var_train, batch_index_train, labels_train) = tensors_train
             sample_batch_train = sample_batch_train.type(torch.float32)
 
             if kl is None:
@@ -32,7 +33,8 @@ def train(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=No
                 kl_ponderation = kl
 
             reconst_loss_train, kl_divergence_train = vae(sample_batch_train, local_l_mean_train, local_l_var_train,
-                                                          batch_index=batch_index_train, y=labels_train)
+                                                          qc=qc_batch_train, batch_index=batch_index_train,
+                                                          y=labels_train)
             train_loss = torch.mean(reconst_loss_train + kl_ponderation * kl_divergence_train)
 
             batch_size = sample_batch_train.size(0)
@@ -69,8 +71,9 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
                 if vae.use_cuda:
                     tensors_train = to_cuda(tensors_train)
                     tensors_test = to_cuda(tensors_test)
-            sample_batch_train, local_l_mean_train, local_l_var_train, batch_index_train, labels_train = tensors_train
-            sample_batch_test, local_l_mean_test, local_l_var_test, batch_index_test, _ = tensors_test
+            (sample_batch_train, qc_batch_train, local_l_mean_train,
+             local_l_var_train, batch_index_train, labels_train) = tensors_train
+            sample_batch_test, qc_batch_test, local_l_mean_test, local_l_var_test, batch_index_test, _ = tensors_test
             sample_batch_train = sample_batch_train.type(torch.float32)
             sample_batch_test = sample_batch_test.type(torch.float32)
 
@@ -80,9 +83,10 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
                 kl_ponderation = kl
 
             reconst_loss_train, kl_divergence_train = vae(sample_batch_train, local_l_mean_train, local_l_var_train,
-                                                          batch_index=batch_index_train, y=labels_train)
+                                                          qc=qc_batch_train, batch_index=batch_index_train,
+                                                          y=labels_train)
             reconst_loss_test, kl_divergence_test = vae(sample_batch_test, local_l_mean_test, local_l_var_test,
-                                                        batch_index=batch_index_test, y=None)
+                                                        qc=qc_batch_test, batch_index=batch_index_test, y=None)
 
             train_loss = torch.mean(reconst_loss_train + kl_ponderation * kl_divergence_train)
             test_loss = torch.mean(reconst_loss_test + kl_ponderation * kl_divergence_test)
@@ -119,7 +123,7 @@ def train_classifier(vae, classifier, data_loader_train, data_loader_test, n_epo
         for i_batch, tensors in enumerate(data_loader_train):
             if vae.use_cuda:
                 tensors = to_cuda(tensors)
-            sample_batch_train, _, _, _, labels_train = tensors
+            sample_batch_train, _, _, _, _, labels_train = tensors
             sample_batch_train = sample_batch_train.type(torch.float32)
             # Get the latent space
             z = vae.sample_from_posterior_z(sample_batch_train, labels_train)

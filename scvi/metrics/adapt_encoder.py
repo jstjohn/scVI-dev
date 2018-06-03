@@ -25,10 +25,11 @@ def adapt_encoder(vae, dataloader, n_path=10, n_epochs=50, record_freq=5):
             for i_batch, tensors in enumerate(dataloader):
                 if vae.use_cuda:
                     tensors = to_cuda(tensors)
-                sample_batch, local_l_mean, local_l_var, batch_index, labels = tensors
+                sample_batch, qc_batch, local_l_mean, local_l_var, batch_index, labels = tensors
                 sample_batch = sample_batch.type(torch.float32)
 
-                reconst_loss, _ = vae(sample_batch, local_l_mean, local_l_var, batch_index=batch_index, y=labels)
+                reconst_loss, _ = vae(sample_batch, local_l_mean, local_l_var, qc=qc_batch,
+                                      batch_index=batch_index, y=labels)
                 train_loss = torch.mean(reconst_loss)
 
                 optimizer.zero_grad()

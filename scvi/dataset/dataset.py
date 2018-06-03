@@ -8,7 +8,7 @@ import numpy as np
 import scipy.sparse as sp_sparse
 import torch
 import urllib.request
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, MinMaxScaler
 from torch.utils.data import Dataset
 
 
@@ -18,7 +18,7 @@ class GeneExpressionDataset(Dataset):
     - local library size normalization (mean, var) per batch
     """
 
-    def __init__(self, X, local_means, local_vars, batch_indices, labels, gene_names=None):
+    def __init__(self, X, local_means, local_vars, batch_indices, labels, gene_names=None, qc=None):
         # Args:
         # Xs: a list of numpy tensors with .shape[1] identical (total_size*nb_genes)
         # or a list of scipy CSR sparse matrix,
@@ -30,7 +30,26 @@ class GeneExpressionDataset(Dataset):
         self.labels = labels
         self.batch_indices = batch_indices
         self.n_batches = len(np.unique(batch_indices))
-        self.dense = type(self.X) is np.ndarray
+        self.dense = isinstance(self.X, np.ndarray)
+        if qc is None:
+            onehot_encoder = OneHotEncoder(sparse=(not self.dense))
+            onehot_batches = onehot_encoder.fit_transform(self.batch_indices)
+            sample_means = np.mean(self.X, axis=1)
+            sample_max = np.max(self.X, axis=1)
+            qc_parts = (onehot_batches, sample_means, sample_max)
+            if self.dense:
+                self.qc = np.column_stack(qc_parts)
+            else:
+                self.qc = sp_sparse.hstack(qc_parts)
+        else:
+            self.qc = qc
+        min_max_transformer = MinMaxScaler()
+        if self.dense:
+            self.qc = min_max_transformer.fit_transform(self.qc)
+        else:
+            # MinMax does not support sparse input, so converting to array here
+            self.qc = min_max_transformer.fit_transform(self.qc.toarray())
+        self.n_qc = self.qc.shape[1]
         self.n_labels = len(np.unique(labels))
 
         if gene_names is not None:
@@ -71,7 +90,8 @@ class GeneExpressionDataset(Dataset):
     def collate_fn(self, batch):
         indexes = np.array(batch)
         X = torch.FloatTensor(self.X[indexes]) if self.dense else torch.FloatTensor(self.X[indexes].toarray())
-        return X, torch.FloatTensor(self.local_means[indexes]), \
+        QC = torch.FloatTensor(self.qc[indexes])
+        return X, QC, torch.FloatTensor(self.local_means[indexes]), \
             torch.FloatTensor(self.local_vars[indexes]), \
             torch.LongTensor(self.batch_indices[indexes]), \
             torch.LongTensor(self.labels[indexes])

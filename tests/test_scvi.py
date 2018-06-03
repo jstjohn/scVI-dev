@@ -5,7 +5,7 @@
 """Tests for `scvi` package."""
 from run_benchmarks import run_benchmarks
 from scvi.benchmark import run_benchmarks_classification
-from scvi.models import VAEC, VAE, SVAEC
+from scvi.models import VAEC, VAE, SVAEC, VAEQC, SVAECQC
 
 
 def test_synthetic_1():
@@ -15,6 +15,14 @@ def test_synthetic_1():
 
 def test_synthetic_2():
     run_benchmarks("synthetic", n_epochs=1, model=SVAEC, benchmark=True)
+
+
+def test_synthetic_3():
+    run_benchmarks("synthetic", n_epochs=1, model=VAEQC, benchmark=True)
+
+
+def test_synthetic_4():
+    run_benchmarks("synthetic", n_epochs=1, model=SVAECQC, benchmark=True)
 
 
 def test_cortex():

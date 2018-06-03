@@ -25,5 +25,5 @@ def load_datasets(dataset_name, unit_test=False):
     elif dataset_name == 'cbmc':
         gene_dataset = CbmcDataset(unit_test=unit_test)
     else:
-        raise "No such dataset available"
+        raise ValueError("No such dataset available")
     return gene_dataset

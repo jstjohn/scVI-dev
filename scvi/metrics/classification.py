@@ -12,7 +12,7 @@ def compute_accuracy(vae, data_loader, classifier=None):
     for i_batch, tensors in enumerate(data_loader):
         if vae.use_cuda:
             tensors = to_cuda(tensors)
-        sample_batch, _, _, _, labels = tensors
+        sample_batch, _, _, _, _, labels = tensors
         sample_batch = sample_batch.type(torch.float32)
         all_labels += [labels.view(-1)]
 

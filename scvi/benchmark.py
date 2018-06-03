@@ -10,13 +10,13 @@ from scvi.metrics.clustering import entropy_batch_mixing, get_latent
 from scvi.metrics.differential_expression import get_statistics
 from scvi.metrics.imputation import imputation
 from scvi.metrics.visualization import show_t_sne
-from scvi.models import VAE, SVAEC
+from scvi.models import VAE, SVAEC, VAEQC
 from scvi.models.modules import Classifier
 from scvi.train import train, train_classifier, train_semi_supervised
 
 
 def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=False, use_cuda=True,
-                   show_batch_mixing=True, benchmark=False, tt_split=0.9, unit_test=False):
+                   show_batch_mixing=True, benchmark=False, tt_split=0.9, unit_test=False, train_labels=False):
     # options:
     # - gene_dataset: a GeneExpressionDataset object
     # call each of the 4 benchmarks:
@@ -34,11 +34,14 @@ def run_benchmarks(dataset_name, model=VAE, n_epochs=1000, lr=1e-3, use_batches=
     data_loader_test = DataLoader(gene_dataset, batch_size=128, pin_memory=use_cuda,
                                   sampler=SubsetRandomSampler(example_indices[tt_split:]),
                                   collate_fn=gene_dataset.collate_fn)
-    vae = model(gene_dataset.nb_genes, n_batch=gene_dataset.n_batches * use_batches, n_labels=gene_dataset.n_labels,
-                use_cuda=use_cuda)
-    stats = train(vae, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr, benchmark=benchmark)
-
-    if isinstance(vae, VAE):
+    vae = model(gene_dataset.nb_genes, n_input_qc=gene_dataset.n_qc, n_labels=gene_dataset.n_labels,
+                use_cuda=use_cuda, n_batch=gene_dataset.n_batches * use_batches)
+    if train_labels:
+        stats = train_semi_supervised(vae, data_loader_train, data_loader_test,
+                                      n_epochs=n_epochs, lr=lr, benchmark=benchmark)
+    else:
+        stats = train(vae, data_loader_train, data_loader_test, n_epochs=n_epochs, lr=lr, benchmark=benchmark)
+    if isinstance(vae, VAE) or isinstance(vae, VAEQC):
         best_ll = adapt_encoder(vae, data_loader_test, n_path=1, n_epochs=1, record_freq=1)
         print("Best ll was :", best_ll)
 

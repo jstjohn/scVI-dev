@@ -127,6 +127,46 @@ class DecoderSCVI(nn.Module):
 
 
 # Decoder
+class DecoderSCVIQC(nn.Module):
+    def __init__(self, n_latent, n_latent_qc, n_input, n_input_qc, n_hidden=128,
+                 n_layers=1, dropout_rate=0.1, n_batch=0, n_labels=0, n_s_decoder=25):
+        super(DecoderSCVIQC, self).__init__()
+        self.n_batch = n_batch
+        self.px_decoder = FCLayers.create(n_in=n_latent+n_latent_qc, n_out=n_hidden, n_layers=n_layers,
+                                          n_hidden=n_hidden, dropout_rate=dropout_rate, n_cat=[n_batch, n_labels])
+
+        self.ps_decoder = FCLayers.create(n_in=n_latent_qc, n_out=n_s_decoder, n_layers=1,
+                                          n_hidden=n_hidden, dropout_rate=dropout_rate)
+
+        self.ps_logit = nn.Linear(n_s_decoder, n_input_qc)
+
+        # mean gamma
+        self.px_scale_decoder = nn.Sequential(nn.Linear(n_hidden+n_latent_qc, n_input), nn.Softmax(dim=-1))
+
+        # dispersion: here we only deal with gene-cell dispersion case
+        self.px_r_decoder = nn.Linear(n_hidden, n_input)
+
+        # dropout
+        self.px_dropout_decoder = nn.Linear(n_hidden, n_input)
+
+        #
+
+    def forward(self, dispersion, z, u, library, batch_index=None, y=None):
+        # The decoder returns values for the parameters of the ZINB distribution
+        px = self.px_decoder(torch.cat((z, u), 1), batch_index, y)
+        ps = self.ps_decoder(u, None, None)
+        px_scale = self.px_scale_decoder(torch.cat((px, u), 1))
+        px_dropout = self.px_dropout_decoder(px)
+        px_rate = torch.exp(torch.clamp(library, 0, 8)) * px_scale  # Total UMI counts clamped to exp(8) ~ 3000
+        ps_logit = self.ps_logit(ps)
+        if dispersion == "gene-cell":
+            px_r = self.px_r_decoder(px)
+            return px_scale, px_r, px_rate, px_dropout, ps_logit
+        else:  # dispersion == "gene" / "gene-batch" / "gene-label"
+            return px_scale, px_rate, px_dropout, ps_logit
+
+
+# Decoder
 class Decoder(nn.Module):
     def __init__(self, n_latent, n_output, n_cat=0, n_hidden=128, n_layers=1, dropout_rate=0.1):
         super(Decoder, self).__init__()

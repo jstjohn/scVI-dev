@@ -20,15 +20,19 @@ def get_statistics(vae, data_loader, M_sampling=100, M_permutation=100000, permu
     # Compute sample rate for the whole dataset ?
     px_scales = []
     all_labels = []
+    const_qc = None
     for tensors in data_loader:
         if vae.use_cuda:
             tensors = to_cuda(tensors)
-        sample_batch, _, _, batch_index, labels = tensors
+        sample_batch, qc_batch, _, _, batch_index, labels = tensors
         sample_batch = sample_batch.type(torch.float32)
         sample_batch = sample_batch.repeat(1, M_sampling).view(-1, sample_batch.size(1))
+        if const_qc is None:  # Sample from a representative sample's qc vector for all sample's x
+            const_qc = qc_batch[0, :][None, :]
+        fixed_qc = const_qc.repeat(sample_batch.size(0), 1)
         batch_index = batch_index.repeat(1, M_sampling).view(-1, 1)
         labels = labels.repeat(1, M_sampling).view(-1, 1)
-        px_scales += [vae.get_sample_scale(sample_batch, y=labels, batch_index=batch_index)]
+        px_scales += [vae.get_sample_scale(sample_batch, qc=fixed_qc, y=labels, batch_index=batch_index)]
         all_labels += [labels]
 
     cell_types = np.array(['astrocytes_ependymal', 'endothelial-mural', 'interneurons', 'microglia',
