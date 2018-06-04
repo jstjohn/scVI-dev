@@ -85,11 +85,11 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
             reconst_loss_train, kl_divergence_train = vae(sample_batch_train, local_l_mean_train, local_l_var_train,
                                                           qc=qc_batch_train, batch_index=batch_index_train,
                                                           y=labels_train)
-            reconst_loss_test, kl_divergence_test = vae(sample_batch_test, local_l_mean_test, local_l_var_test,
-                                                        qc=qc_batch_test, batch_index=batch_index_test, y=None)
 
             train_loss = torch.mean(reconst_loss_train + kl_ponderation * kl_divergence_train)
             if train_on_test:
+                reconst_loss_test, kl_divergence_test = vae(sample_batch_test, local_l_mean_test, local_l_var_test,
+                                                            qc=qc_batch_test, batch_index=batch_index_test, y=None)
                 test_loss = torch.mean(reconst_loss_test + kl_ponderation * kl_divergence_test)
                 total_loss = train_loss + test_loss
             else:
