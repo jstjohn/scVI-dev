@@ -171,7 +171,7 @@ class SVAECQC(nn.Module):
         kl_divergence_z1 = kl(Normal(qz1_m, torch.sqrt(qz1_v)), Normal(mean_z1, scale_z1)).sum(dim=1)
         kl_divergence_u = kl(Normal(qu_m, torch.sqrt(qu_v)), Normal(mean_u, scale_u)).sum(dim=1)
         kl_divergence_l = kl(Normal(ql_m, torch.sqrt(ql_v)), Normal(local_l_mean, torch.sqrt(local_l_var))).sum(dim=1)
-        hsic_loss = hsic_objective(z1, u)
+        hsic_loss = hsic_objective(z1, u, use_cuda=self.use_cuda)
         kl_divergence = kl_divergence_z1 + kl_divergence_l + kl_divergence_u + hsic_loss + loss_z1 + kl_divergence_z2
 
         if is_labelled:

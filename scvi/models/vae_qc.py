@@ -124,7 +124,7 @@ class VAEQC(nn.Module):
         kl_divergence_z = kl(Normal(qz_m, torch.sqrt(qz_v)), Normal(mean_z, scale_z)).sum(dim=1)
         kl_divergence_u = kl(Normal(qu_m, torch.sqrt(qu_v)), Normal(mean_u, scale_u)).sum(dim=1)
         kl_divergence_l = kl(Normal(ql_m, torch.sqrt(ql_v)), Normal(local_l_mean, torch.sqrt(local_l_var))).sum(dim=1)
-        hsic_loss = hsic_objective(z, u)
+        hsic_loss = hsic_objective(z, u, use_cuda=self.use_cuda)
         kl_divergence = kl_divergence_z + kl_divergence_l + kl_divergence_u + hsic_loss
 
         return reconst_loss, kl_divergence

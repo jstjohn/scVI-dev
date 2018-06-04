@@ -26,20 +26,24 @@ def compute_log_likelihood(vae, data_loader):
 
 
 def sigmoid_cross_entropy_with_logits(x, z):
-    return torch.max(x, torch.tensor(0.0)) - x * z + torch.log(1 + torch.exp(-torch.abs(x)))
+    return torch.clamp(x, min=0.0) - x * z + torch.log(1 + torch.exp(-torch.abs(x)))
 
 
-def hsic_objective(z, s):
+def hsic_objective(z, s, use_cuda=True):
     # use a gaussian RBF for every variable
     def K(x1, x2, gamma=1.):
         dist_table = x1[None, :] - x2[:, None]
-        return torch.t(torch.exp(torch.clamp(-gamma * torch.sum(dist_table ** 2, 2), -1e8, 20)))
+        return torch.t(torch.exp(torch.clamp(-gamma * torch.sum(dist_table ** 2, 2), max=20)))
 
-    d_z = z.shape[1]
-    d_s = s.shape[1]
+    n_latent_z = torch.tensor(z.size(1), dtype=torch.float)
+    n_latent_s = torch.tensor(s.size(1), dtype=torch.float)
 
-    gz = 2 * torch.exp(torch.lgamma(torch.tensor(0.5 * (d_z + 1))) - torch.lgamma(torch.tensor(0.5 * d_z)))
-    gs = 2 * torch.exp(torch.lgamma(torch.tensor(0.5 * (d_s + 1))) - torch.lgamma(torch.tensor(0.5 * d_s)))
+    if use_cuda:
+        n_latent_s = n_latent_s.cuda()
+        n_latent_z = n_latent_z.cuda()
+
+    gz = 2 * torch.exp(torch.lgamma(0.5 * (n_latent_z + 1)) - torch.lgamma(0.5 * n_latent_z))
+    gs = 2 * torch.exp(torch.lgamma(0.5 * (n_latent_s + 1)) - torch.lgamma(0.5 * n_latent_s))
 
     zz = K(z, z, gamma=1. / (2. * gz))
     ss = K(s, s, gamma=1. / (2. * gs))
@@ -48,19 +52,14 @@ def hsic_objective(z, s):
     hsic += torch.mean(zz * ss)
     hsic += torch.mean(zz) * torch.mean(ss)
     hsic -= 2 * torch.mean(torch.mean(zz, 1) * torch.mean(ss, 1))
-    return torch.sqrt(torch.clamp(hsic, 0, 1e8))
+    return torch.sqrt(torch.clamp(hsic, min=0))
 
 
-def log_bernoulli_with_logits(x, logits, eps=0.0, axis=-1):
+def log_bernoulli_with_logits(x, logits, eps=1e-8, axis=-1):
     if eps > 0.0:
-        max_val = torch.log(1.0 - eps) - torch.log(eps)
-        logits = torch.clamp(logits, -max_val, max_val, name='clamped_logit')
+        logits = torch.clamp(logits, -18, 18)
     return -torch.sum(
         sigmoid_cross_entropy_with_logits(logits, x), axis)
-
-
-def mse_loss(input, target):
-    return torch.sum((input - target)**2) / input.data.nelement()
 
 
 def log_zinb_positive(x, mu, theta, pi, eps=1e-8):
