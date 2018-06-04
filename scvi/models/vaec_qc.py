@@ -6,7 +6,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal, Multinomial, kl_divergence as kl
 
-from scvi.metrics.log_likelihood import log_zinb_positive, log_nb_positive, log_bernoulli_with_logits, hsic_objective
+from scvi.metrics.log_likelihood import (
+    log_zinb_positive,
+    log_nb_positive,
+    log_bernoulli_with_logits,
+    hsic_objective,
+    calculate_gamma_given_latent_dim,
+)
 from scvi.models.modules import Encoder, DecoderSCVIQC, Classifier
 from scvi.models.utils import one_hot, enumerate_discrete
 
@@ -35,6 +41,9 @@ class VAECQC(nn.Module):
             self.px_r = torch.nn.Parameter(torch.randn(n_input, n_labels))
         else:  # gene-cell
             pass
+
+        self.gamma_z = torch.tensor(calculate_gamma_given_latent_dim(n_latent), requires_grad=False)
+        self.gamma_u = torch.tensor(calculate_gamma_given_latent_dim(n_latent_qc), requires_grad=False)
 
         self.z_encoder = Encoder(n_input, n_hidden=n_hidden, n_latent=n_latent, n_layers=n_layers,
                                  dropout_rate=dropout_rate)
@@ -160,7 +169,7 @@ class VAECQC(nn.Module):
         kl_divergence_z = kl(Normal(qz_m, torch.sqrt(qz_v)), Normal(mean_z, scale_z)).sum(dim=1)
         kl_divergence_u = kl(Normal(qu_m, torch.sqrt(qu_v)), Normal(mean_u, scale_u)).sum(dim=1)
         kl_divergence_l = kl(Normal(ql_m, torch.sqrt(ql_v)), Normal(local_l_mean, torch.sqrt(local_l_var))).sum(dim=1)
-        hsic_loss = hsic_objective(z, u, use_cuda=self.use_cuda)
+        hsic_loss = hsic_objective(z, u, gamma_z=self.gamma_z, gamma_u=self.gamma_u)
         kl_divergence = kl_divergence_z + kl_divergence_l + kl_divergence_u + hsic_loss
 
         if is_labelled:

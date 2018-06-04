@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 
 from scvi.utils import to_cuda, no_grad, eval_modules
+import scipy.special as sp_special
 
 
 @no_grad()
@@ -29,24 +30,19 @@ def sigmoid_cross_entropy_with_logits(x, z):
     return torch.clamp(x, min=0.0) - x * z + torch.log(1 + torch.exp(-torch.abs(x)))
 
 
-def hsic_objective(z, s, use_cuda=True):
+def calculate_gamma_given_latent_dim(latent_dim):
+    """A function to claculate the gamma_z and gamma_u values for the hsic objective"""
+    return 2 * sp_special.gamma(0.5 * (latent_dim + 1)) / sp_special.gamma(0.5 * latent_dim)
+
+
+def hsic_objective(z, u, gamma_z, gamma_u):
     # use a gaussian RBF for every variable
     def K(x1, x2, gamma=1.):
         dist_table = x1[None, :] - x2[:, None]
         return torch.t(torch.exp(torch.clamp(-gamma * torch.sum(dist_table ** 2, 2), max=20)))
 
-    n_latent_z = torch.tensor(z.size(1), dtype=torch.float)
-    n_latent_s = torch.tensor(s.size(1), dtype=torch.float)
-
-    if use_cuda:
-        n_latent_s = n_latent_s.cuda()
-        n_latent_z = n_latent_z.cuda()
-
-    gz = 2 * torch.exp(torch.lgamma(0.5 * (n_latent_z + 1)) - torch.lgamma(0.5 * n_latent_z))
-    gs = 2 * torch.exp(torch.lgamma(0.5 * (n_latent_s + 1)) - torch.lgamma(0.5 * n_latent_s))
-
-    zz = K(z, z, gamma=1. / (2. * gz))
-    ss = K(s, s, gamma=1. / (2. * gs))
+    zz = K(z, z, gamma=1. / (2. * gamma_z))
+    ss = K(u, u, gamma=1. / (2. * gamma_u))
 
     hsic = 0
     hsic += torch.mean(zz * ss)
