@@ -60,6 +60,8 @@ class VAECQC(nn.Module):
         if self.use_cuda:
             self.cuda()
             self.y_prior = self.y_prior.cuda()
+            self.gamma_u = self.gamma_u.cuda()
+            self.gamma_z = self.gamma_z.cuda()
 
     def classify(self, x):
         x_ = torch.log(1 + x)

@@ -56,6 +56,8 @@ class VAEQC(nn.Module):
         self.use_cuda = use_cuda and torch.cuda.is_available()
         if self.use_cuda:
             self.cuda()
+            self.gamma_u = self.gamma_u.cuda()
+            self.gamma_z = self.gamma_z.cuda()
 
     def sample_from_posterior_u(self, x, qc, y=None, eps=1e-8):
         x = torch.log(1 + x)
