@@ -53,7 +53,7 @@ def train(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=No
 
 @enable_grad()
 def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20, lr=0.001, kl=None, benchmark=False,
-                          classification_ratio=0):
+                          classification_ratio=0, train_on_test=True):
     # Defining the optimizer
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, vae.parameters()), lr=lr, eps=0.01)
 
@@ -89,18 +89,21 @@ def train_semi_supervised(vae, data_loader_train, data_loader_test, n_epochs=20,
                                                         qc=qc_batch_test, batch_index=batch_index_test, y=None)
 
             train_loss = torch.mean(reconst_loss_train + kl_ponderation * kl_divergence_train)
-            test_loss = torch.mean(reconst_loss_test + kl_ponderation * kl_divergence_test)
-            train_test_loss = train_loss + test_loss
+            if train_on_test:
+                test_loss = torch.mean(reconst_loss_test + kl_ponderation * kl_divergence_test)
+                total_loss = train_loss + test_loss
+            else:
+                total_loss = train_loss
 
             # Add a classification loss (most semi supervised VAE papers do)
             if hasattr(vae, "classify") and labels_train is not None:
                 classification_loss = F.cross_entropy(vae.classify(sample_batch_train), labels_train.view(-1))
-                train_test_loss += classification_loss * classification_ratio
+                total_loss += classification_loss * classification_ratio
 
             batch_size = sample_batch_train.size(0)
             total_train_loss += train_loss.item() * batch_size
             optimizer.zero_grad()
-            train_test_loss.backward()
+            total_loss.backward()
             optimizer.step()
 
         if not early_stopping.update(total_train_loss):

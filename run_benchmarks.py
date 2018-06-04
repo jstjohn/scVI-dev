@@ -3,11 +3,12 @@
 """Run all the benchmarks with specific parameters"""
 import argparse
 
-from scvi.models import VAEQC, VAE, VAEC, SVAEC, SVAECQC
+from scvi.models import VAEQC, VAE, VAEC, VAECQC, SVAEC, SVAECQC
 from scvi.benchmark import run_benchmarks
 
 models = {
     "VAEQC": VAEQC,
+    "VAECQC": VAECQC,
     "VAE": VAE,
     "VAEC": VAEC,
     "SVAEC": SVAEC,

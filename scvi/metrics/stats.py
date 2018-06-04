@@ -5,7 +5,7 @@ import numpy as np
 
 from scvi.metrics.classification import compute_accuracy
 from scvi.metrics.log_likelihood import compute_log_likelihood
-from scvi.models import VAE, VAEC, SVAEC, VAEQC, SVAECQC
+from scvi.models import VAE, VAEC, SVAEC, VAEQC, VAECQC, SVAECQC
 
 
 class Stats:
@@ -35,7 +35,7 @@ class Stats:
         self.epoch += 1
 
     def add_ll(self, model, data_loader, name='train'):
-        models = [VAE, VAEC, SVAEC, VAEQC, SVAECQC]
+        models = [VAE, VAEC, SVAEC, VAEQC, SVAECQC, VAECQC]
         if type(model) in models:
             log_likelihood = compute_log_likelihood(model, data_loader)
             self.history["LL_%s" % name].append(log_likelihood)
@@ -43,7 +43,7 @@ class Stats:
                 print("LL %s is: %4f" % (name, log_likelihood))
 
     def add_accuracy(self, model, data_loader, classifier=None, name='train'):
-        models = [VAEC, SVAEC, SVAECQC]
+        models = [VAEC, SVAEC, SVAECQC, VAECQC]
         if type(model) in models or classifier:
             accuracy = compute_accuracy(model, data_loader, classifier)
             self.history["Accuracy_%s" % name].append(accuracy)
